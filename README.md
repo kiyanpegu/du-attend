@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# DU Attend 🎓
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Modern mobile attendance & academic schedule tracking application prototype for Dibrugarh University students and faculty. Built with React Native, Expo, and TypeScript.
 
-## Get started
+[![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020.svg?style=flat-square&logo=expo)](https://expo.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB.svg?style=flat-square&logo=react)](https://reactnative.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-blue.svg?style=flat-square)](#)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📱 Features
 
-2. Start the app
+### 👨‍🎓 Student Portal
+- **Dashboard Overview**: Real-time overall attendance ring, dynamic 75% safety status, and active class alerts.
+- **Attendance Safety Advisor**: Exact mathematical calculator indicating safe classes you can miss (if $\ge 75\%$) or consecutive classes needed to recover exam eligibility (if $< 75\%$).
+- **Live OTP Attendance**: Secure, one-tap attendance marking during live lecture sessions with cryptographic 6-digit OTP verification and rate limiting.
+- **Academic Timetable**: Full weekly class schedule (BCA 1st Semester) with period ordering, lecture room numbers, and faculty details.
+- **Course Breakdown & History**: Enrolled subject cards with expandable session logs, filterable audit history, and academic affiliation profile.
 
-   ```bash
-   npx expo start
-   ```
+### 👩‍🏫 Faculty Console
+- **Class Session Launch**: Select subjects and launch live OTP attendance sessions with real-time countdown timer.
+- **Manual Attendance Fallback**: Quick student roster check-in for offline sessions or medical leave adjustments.
+- **Class Records & Export**: View attendance logs, export class summaries, and track student trends.
 
-In the output, you'll find options to open the app in a
+### ⚙️ Prototype Administration
+- Academic structure overview, student/faculty roster management, and prototype system resets.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🛠 Tech Stack
 
-## Get a fresh project
+- **Framework**: [React Native](https://reactnative.dev) with [Expo](https://expo.dev) (Expo SDK 54 / Expo Router v6)
+- **Language**: [TypeScript](https://www.typescriptlang.org) (strict type checking enabled)
+- **Engine**: Hermes JavaScript Engine with full bytecode optimization
+- **Security**: Cryptographic random OTP generation (`expo-crypto`) and encrypted session persistence (`expo-secure-store`)
+- **State & Storage**: Serialized ACID-like atomic mutations with AsyncStorage and SecureStore fallbacks
+- **Icons & Design**: Material Icons and SF Symbols cross-platform mapping with dark-mode university theme
 
-When you're ready, run:
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v18 or newer recommended)
+- Git
+- [Expo Go](https://expo.dev/go) app installed on your iOS or Android device
+
+### Installation & Run
 
 ```bash
-npm run reset-project
+# 1. Clone the repository
+git clone https://github.com/kiyanpegu/du-attend.git
+cd du-attend
+
+# 2. Install dependencies
+npm install
+
+# 3. Start development server
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Scan the generated QR code using **Expo Go** (Android) or the **Camera app** (iOS).
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🧪 Automated Verification
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The project includes an end-to-end automated test suite verifying all 14 core attendance and security rules:
 
-## Join the community
+```bash
+# Run test suite
+npm test
 
-Join our community of developers creating universal apps.
+# Run TypeScript typecheck
+npm run typecheck
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Run linter
+npm run lint
+```
+
+---
+
+## 🔑 Demo Credentials
+
+| Role | Username / ID | Password | Scope / Affiliation |
+| :--- | :--- | :--- | :--- |
+| **Student** | `BCA001` | `student123` | BCA 1st Sem, Centre for Computer Science & Applications |
+| **Faculty** | `FAC001` | `faculty123` | Faculty of Computer Science & Applications |
+| **Admin** | `ADMIN001` | `admin123` | Academic Administration Console |
+
+---
+
+## 📜 Disclaimer
+
+> **Independent Prototype**: This application is an independent student demonstration prototype. It is not an officially endorsed, approved, or operated application of Dibrugarh University. All student names, enrolment IDs, and records are synthetic development data.
