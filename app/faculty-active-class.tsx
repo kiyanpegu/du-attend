@@ -10,6 +10,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
+import { cloudService } from '@/services/cloudService';
 import type { FacultySessionReport } from '@/types/models';
 import { useFocusEffect , useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -92,6 +93,19 @@ export default function FacultyActiveClassScreen() {
 
     return () => clearInterval(timer);
   }, [secondsLeft]);
+
+  // Real-time student attendance submission listener from cloud
+  useEffect(() => {
+    if (!report?.session.id || !cloudService.isOnline()) return;
+
+    const unsubscribe = cloudService.subscribeToSessionRoster(report.session.id, () => {
+      loadSession();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [report?.session.id, loadSession]);
 
   const handleRegenerateOtp = async () => {
     if (!report) return;

@@ -1,23 +1,38 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { roleHomeRoutes, roleLoginRoutes, STORAGE_KEYS } from '@/constants/duAttend';
+import { cloudService } from '@/services/cloudService';
 import { storageService } from '@/services/storageService';
 import type { AuthSession, Role, ServiceResult, User } from '@/types/models';
 import { normalizeCredential } from '@/utils/format';
 
 export const authService = {
   async login(role: Role, username: string, password: string): Promise<ServiceResult<AuthSession>> {
-    const database = await storageService.getDatabase();
-    const normalizedUsername = normalizeCredential(username);
-    const user = database.users.find(
-      (item) => item.role === role && item.username.toUpperCase() === normalizedUsername
-    );
+    let user: User | null = null;
 
-    if (!user || !user.active || user.developmentPassword !== password) {
-      return {
-        ok: false,
-        message: `Invalid ${role} credentials.`,
-      };
+    if (cloudService.isOnline()) {
+      user = await cloudService.authenticateUser(username, password);
+      if (user && user.role !== role) {
+        return {
+          ok: false,
+          message: `Invalid ${role} credentials.`,
+        };
+      }
+    }
+
+    if (!user) {
+      const database = await storageService.getDatabase();
+      const normalizedUsername = normalizeCredential(username);
+      user = database.users.find(
+        (item) => item.role === role && item.username.toUpperCase() === normalizedUsername
+      ) ?? null;
+
+      if (!user || !user.active || user.developmentPassword !== password) {
+        return {
+          ok: false,
+          message: `Invalid ${role} credentials.`,
+        };
+      }
     }
 
     const session: AuthSession = {

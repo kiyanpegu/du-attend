@@ -10,6 +10,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
+import { cloudService } from '@/services/cloudService';
 import { studentService } from '@/services/studentService';
 import type { AttendanceSession, ClassScheduleItem, DayOfWeek, StudentDashboardData, SubjectAttendanceSummary } from '@/types/models';
 import { calculateAttendanceAdvice } from '@/utils/format';
@@ -61,11 +62,19 @@ export default function StudentDashboard() {
 
       run();
 
-      // Check for active classes every 5 seconds while on dashboard
+      // Subscribe to real-time session changes from cloud if online
+      const unsubscribeCloud = cloudService.subscribeToActiveSessions(() => {
+        if (mounted) {
+          run();
+        }
+      });
+
+      // Check for active classes every 5 seconds while on dashboard as safety heartbeat
       const interval = setInterval(run, 5000);
 
       return () => {
         mounted = false;
+        unsubscribeCloud();
         clearInterval(interval);
       };
     }, [loadData])

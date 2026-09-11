@@ -1,5 +1,6 @@
 import { OTP_CONFIG } from '@/constants/duAttend';
 import { SEED_IDS } from '@/constants/seedData';
+import { cloudService } from '@/services/cloudService';
 import { storageService } from '@/services/storageService';
 import type {
     AttendanceFilter,
@@ -371,6 +372,10 @@ export const attendanceService = {
       };
     }
 
+    if (cloudService.isOnline()) {
+      await cloudService.createSession(createdSession);
+    }
+
     return {
       ok: true,
       message: 'Attendance session started successfully.',
@@ -418,14 +423,22 @@ export const attendanceService = {
       updatedSession = session;
     });
 
-    if (errorMessage || !updatedSession) {
+    const finalSession = updatedSession as AttendanceSession | null;
+    if (errorMessage || !finalSession) {
       return { ok: false, message: errorMessage ?? 'Failed to regenerate OTP.' };
+    }
+
+    if (cloudService.isOnline()) {
+      await cloudService.updateSession(finalSession.id, {
+        otp: finalSession.otp,
+        otpExpiresAt: finalSession.otpExpiresAt,
+      });
     }
 
     return {
       ok: true,
       message: 'New OTP generated (valid for 60 seconds).',
-      data: updatedSession,
+      data: finalSession,
     };
   },
 
@@ -443,6 +456,26 @@ export const attendanceService = {
   },
 
   async getActiveSessionsForStudent(studentUserId: string) {
+    if (cloudService.isOnline()) {
+      try {
+        const cloudSessions = await cloudService.getActiveSessions();
+        if (cloudSessions.length > 0) {
+          await storageService.updateDatabase((database) => {
+            cloudSessions.forEach((cSession) => {
+              const idx = database.attendanceSessions.findIndex((s) => s.id === cSession.id);
+              if (idx >= 0) {
+                database.attendanceSessions[idx] = cSession;
+              } else {
+                database.attendanceSessions.push(cSession);
+              }
+            });
+          });
+        }
+      } catch {
+        // Fallback to local
+      }
+    }
+
     const database = await storageService.getDatabase();
     const student = database.students.find((item) => item.userId === studentUserId && item.active);
 
@@ -471,6 +504,26 @@ export const attendanceService = {
     const otp = otpInput.trim();
     if (!/^\d{6}$/.test(otp)) {
       return { ok: false, message: 'OTP must be exactly 6 digits.' };
+    }
+
+    if (cloudService.isOnline()) {
+      try {
+        const cloudSessions = await cloudService.getActiveSessions();
+        if (cloudSessions.length > 0) {
+          await storageService.updateDatabase((database) => {
+            cloudSessions.forEach((cSession) => {
+              const idx = database.attendanceSessions.findIndex((s) => s.id === cSession.id);
+              if (idx >= 0) {
+                database.attendanceSessions[idx] = cSession;
+              } else {
+                database.attendanceSessions.push(cSession);
+              }
+            });
+          });
+        }
+      } catch {
+        // Fallback to local
+      }
     }
 
     let createdRecord: AttendanceRecord | null = null;
@@ -564,6 +617,10 @@ export const attendanceService = {
     }
 
     clearFailedAttempts(studentUserId);
+
+    if (cloudService.isOnline() && createdRecord) {
+      await cloudService.createAttendanceRecord(createdRecord);
+    }
 
     return {
       ok: true,
@@ -695,11 +752,19 @@ export const attendanceService = {
       endedSession = session;
     });
 
-    if (errorMessage || !endedSession) {
+    const finalEndedSession = endedSession as AttendanceSession | null;
+    if (errorMessage || !finalEndedSession) {
       return { ok: false, message: errorMessage ?? 'Failed to end class.' };
     }
 
-    return { ok: true, message: 'Class ended and attendance finalized.', data: endedSession };
+    if (finalEndedSession && cloudService.isOnline()) {
+      await cloudService.updateSession(finalEndedSession.id, {
+        status: 'ended',
+        endedAt: finalEndedSession.endedAt,
+      });
+    }
+
+    return { ok: true, message: 'Class ended and attendance finalized.', data: finalEndedSession };
   },
 
   async cancelClass(facultyUserId: string, sessionId: string): Promise<ServiceResult<AttendanceSession>> {
@@ -732,14 +797,44 @@ export const attendanceService = {
       cancelledSession = session;
     });
 
-    if (errorMessage || !cancelledSession) {
+    const finalCancelledSession = cancelledSession as AttendanceSession | null;
+    if (errorMessage || !finalCancelledSession) {
       return { ok: false, message: errorMessage ?? 'Failed to cancel class.' };
     }
 
-    return { ok: true, message: 'Class cancelled. Attendance will not count.', data: cancelledSession };
+    if (finalCancelledSession && cloudService.isOnline()) {
+      await cloudService.updateSession(finalCancelledSession.id, {
+        status: 'cancelled',
+        cancelledAt: finalCancelledSession.cancelledAt,
+      });
+    }
+
+    return { ok: true, message: 'Class cancelled. Attendance will not count.', data: finalCancelledSession };
   },
 
   async getSessionReport(sessionId: string) {
+    if (cloudService.isOnline()) {
+      try {
+        const cloudRecords = await cloudService.getSessionRecords(sessionId);
+        if (cloudRecords.length > 0) {
+          await storageService.updateDatabase((database) => {
+            cloudRecords.forEach((cRecord) => {
+              const idx = database.attendanceRecords.findIndex(
+                (r) => r.sessionId === cRecord.sessionId && r.studentId === cRecord.studentId
+              );
+              if (idx >= 0) {
+                database.attendanceRecords[idx] = cRecord;
+              } else {
+                database.attendanceRecords.push(cRecord);
+              }
+            });
+          });
+        }
+      } catch {
+        // Fallback to local
+      }
+    }
+
     const database = await storageService.getDatabase();
     const session = database.attendanceSessions.find((item) => item.id === sessionId);
 
