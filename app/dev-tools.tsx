@@ -1,5 +1,6 @@
 import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
+import { AppUpdateCard } from '@/components/app/AppUpdateCard';
 import { Card } from '@/components/app/Card';
 import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
@@ -112,6 +113,9 @@ export default function DevToolsScreen() {
           DEVELOPMENT USE ONLY — These utilities provide quick testing shortcuts and database reset mechanisms.
         </Text>
       </View>
+
+      {/* In-App Direct Updates */}
+      <AppUpdateCard style={{ marginBottom: 16 }} />
 
       {/* Quick Login Section */}
       <Text style={styles.sectionTitle}>1-Tap Rapid Role Switcher</Text>

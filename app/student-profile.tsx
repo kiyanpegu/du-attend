@@ -1,5 +1,6 @@
 import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
+import { AppUpdateCard } from '@/components/app/AppUpdateCard';
 import { Card } from '@/components/app/Card';
 import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
@@ -12,7 +13,7 @@ import { authService } from '@/services/authService';
 import { studentService } from '@/services/studentService';
 import type { AttendanceSession, SubjectAttendanceSummary } from '@/types/models';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 export default function StudentProfileScreen() {
@@ -129,6 +130,9 @@ export default function StudentProfileScreen() {
             </View>
           ))}
         </Card>
+
+        {/* In-App Self-Updating */}
+        <AppUpdateCard style={{ marginBottom: 16 }} />
 
         {/* Actions & Disclaimers */}
         <View style={styles.actionWrap}>
