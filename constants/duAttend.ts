@@ -19,6 +19,15 @@ export const OTP_CONFIG = {
   expiresInSeconds: 60,
 };
 
+export const GEOFENCE_CONFIG = {
+  // Dibrugarh University Centre for Computer Science and Applications (CCSA)
+  targetLatitude: 27.4526,
+  targetLongitude: 94.9185,
+  allowedRadiusMeters: 100,
+  campusName: 'Dibrugarh University — CCSA Campus',
+  classroomName: 'CCSA Lecture Hall 1',
+};
+
 export const STORAGE_KEYS = {
   database: 'duAttendDatabase',
   authSession: 'duAttendAuthSession',

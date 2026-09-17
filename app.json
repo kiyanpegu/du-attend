@@ -42,7 +42,14 @@
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DU Attend uses your location to verify physical presence inside the classroom during OTP attendance check-ins."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

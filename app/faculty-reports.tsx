@@ -5,15 +5,17 @@ import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
 import { ProgressBar } from '@/components/app/ProgressBar';
 import { StatusBadge } from '@/components/app/StatusBadge';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
 import { authService } from '@/services/authService';
+import { exportService } from '@/services/exportService';
 import { facultyService } from '@/services/facultyService';
 import { storageService } from '@/services/storageService';
 import type { Subject } from '@/types/models';
 import { calculatePercentage, getAttendanceStanding } from '@/utils/format';
-import { useFocusEffect , useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface StudentSubjectReport {
   studentId: string;
@@ -123,6 +125,24 @@ export default function FacultyReportsScreen() {
     }, [loadData])
   );
 
+  const handleExportCsv = async (report: SubjectReportData) => {
+    try {
+      const csv = exportService.generateSubjectCsv(
+        report.subject.code,
+        report.subject.name,
+        report.totalConducted,
+        report.students
+      );
+      const fileName = `${report.subject.code}_Attendance_Report.csv`;
+      const res = await exportService.exportAndShareCsv(fileName, csv);
+      if (!res.ok) {
+        Alert.alert('Export Notice', res.message);
+      }
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Failed to export report.');
+    }
+  };
+
   if (loading) {
     return <LoadingState message="Calculating attendance reports..." />;
   }
@@ -197,6 +217,17 @@ export default function FacultyReportsScreen() {
             height={8}
             style={styles.summaryProgress}
           />
+
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={() => handleExportCsv(activeReport)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Export ${activeReport.subject.code} CSV Report`}
+          >
+            <IconSymbol size={18} name="square.and.arrow.up" color="#ffffff" />
+            <Text style={styles.exportButtonText}>Export {activeReport.subject.code} CSV Report</Text>
+          </TouchableOpacity>
         </View>
       </Card>
 
@@ -374,5 +405,21 @@ const styles = StyleSheet.create({
   },
   studentProgress: {
     marginBottom: 2,
+  },
+  exportButton: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: APP_COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  exportButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

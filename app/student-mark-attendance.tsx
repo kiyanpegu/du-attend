@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
+import { GeofenceResult, locationService } from '@/services/locationService';
 import { subjectService } from '@/services/subjectService';
 import type { AttendanceSession, Subject } from '@/types/models';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     View,
@@ -31,6 +33,34 @@ export default function StudentMarkAttendance() {
     timestamp: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [geofenceStatus, setGeofenceStatus] = useState<GeofenceResult | null>(null);
+  const [simulateClassroom, setSimulateClassroom] = useState(true);
+  const [checkingLocation, setCheckingLocation] = useState(false);
+
+  const verifyLocation = useCallback(async (simulated: boolean) => {
+    setCheckingLocation(true);
+    try {
+      const result = await locationService.checkClassroomGeofence(simulated);
+      setGeofenceStatus(result);
+      return result;
+    } finally {
+      setCheckingLocation(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const runAsyncCheck = async () => {
+      const result = await locationService.checkClassroomGeofence(simulateClassroom);
+      if (active) {
+        setGeofenceStatus(result);
+      }
+    };
+    runAsyncCheck();
+    return () => {
+      active = false;
+    };
+  }, [simulateClassroom]);
 
   const fetchActive = useCallback(async () => {
     try {
@@ -82,6 +112,14 @@ export default function StudentMarkAttendance() {
     setLoading(true);
 
     try {
+      // 1. Verify classroom geofence
+      const locationCheck = await verifyLocation(simulateClassroom);
+      if (!locationCheck.isInside) {
+        setErrorMessage(locationCheck.message);
+        setLoading(false);
+        return;
+      }
+
       const user = await authService.getActiveUser();
       if (!user) {
         router.replace('/student-login' as never);
@@ -165,6 +203,51 @@ export default function StudentMarkAttendance() {
                 Enter the 6-digit OTP displayed by your faculty.
               </Text>
             </View>
+
+            {/* Location Verification Radar Card */}
+            <Card style={styles.locationCard} padded>
+              <View style={styles.locationCardHeader}>
+                <View
+                  style={[
+                    styles.locationIconWrap,
+                    geofenceStatus?.isInside ? styles.locationIconSuccess : styles.locationIconWarning,
+                  ]}
+                >
+                  <IconSymbol
+                    size={20}
+                    name={geofenceStatus?.isInside ? 'checkmark.shield.fill' : 'exclamationmark.triangle.fill'}
+                    color={geofenceStatus?.isInside ? APP_COLORS.success : APP_COLORS.warning}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.locationTitle}>Classroom Geofence</Text>
+                  <Text style={styles.locationSubtitle}>
+                    {checkingLocation
+                      ? 'Checking GPS coordinates...'
+                      : geofenceStatus?.message ?? 'Awaiting location check...'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.locationDivider} />
+
+              <View style={styles.simulationRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.simulationLabel}>Simulate Campus GPS</Text>
+                  <Text style={styles.simulationHint}>
+                    {simulateClassroom
+                      ? 'Simulating presence inside CCSA (Testing Mode)'
+                      : 'Using physical device GPS coordinates'}
+                  </Text>
+                </View>
+                <Switch
+                  value={simulateClassroom}
+                  onValueChange={(val) => setSimulateClassroom(val)}
+                  trackColor={{ false: APP_COLORS.surfaceVariant, true: APP_COLORS.primary }}
+                  thumbColor="#ffffff"
+                />
+              </View>
+            </Card>
 
             <View style={styles.otpForm}>
               <TextInput
@@ -401,5 +484,58 @@ const styles = StyleSheet.create({
   },
   successBtn: {
     width: '100%',
+  },
+  locationCard: {
+    width: '100%',
+    marginBottom: 16,
+    backgroundColor: APP_COLORS.surfaceVariant,
+  },
+  locationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  locationIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIconSuccess: {
+    backgroundColor: `${APP_COLORS.success}20`,
+  },
+  locationIconWarning: {
+    backgroundColor: `${APP_COLORS.warning}20`,
+  },
+  locationTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+  },
+  locationSubtitle: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  locationDivider: {
+    height: 1,
+    backgroundColor: APP_COLORS.border,
+    marginVertical: 12,
+  },
+  simulationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  simulationLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.text,
+  },
+  simulationHint: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+    marginTop: 2,
   },
 });

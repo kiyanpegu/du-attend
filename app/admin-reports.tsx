@@ -10,9 +10,10 @@ import { APP_COLORS } from '@/constants/duAttend';
 import { adminService } from '@/services/adminService';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
+import { exportService } from '@/services/exportService';
 import type { FacultySessionReport } from '@/types/models';
-import { useFocusEffect , useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -90,6 +91,18 @@ export default function AdminReportsScreen() {
     return true;
   });
 
+  const handleExportMasterCsv = async () => {
+    try {
+      const csv = exportService.generateMasterAuditCsv(reports);
+      const res = await exportService.exportAndShareCsv('DU_Attend_Master_Audit_Report.csv', csv);
+      if (!res.ok) {
+        Alert.alert('Export Notice', res.message);
+      }
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Failed to export master report.');
+    }
+  };
+
   if (loading) {
     return <LoadingState message="Loading university attendance records..." />;
   }
@@ -129,6 +142,17 @@ export default function AdminReportsScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.exportMasterBtn}
+        onPress={handleExportMasterCsv}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Export Master Attendance Audit CSV"
+      >
+        <IconSymbol size={18} name="square.and.arrow.up" color="#ffffff" />
+        <Text style={styles.exportMasterBtnText}>Export Master Audit CSV ({reports.length} Sessions)</Text>
+      </TouchableOpacity>
 
       {/* Sessions Count */}
       <Text style={styles.recordCount}>
@@ -493,6 +517,22 @@ const styles = StyleSheet.create({
   },
   correctBtn: {
     width: '100%',
+  },
+  exportMasterBtn: {
+    marginVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: APP_COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  exportMasterBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 
