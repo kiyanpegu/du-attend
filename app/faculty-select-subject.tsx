@@ -65,10 +65,10 @@ export default function FacultySelectSubjectScreen() {
       if (result.ok) {
         router.replace('/faculty-active-class' as never);
       } else {
-        Alert.alert('Unable to Start Class', result.message);
+        Alert.alert('Unable to Start Attendance', result.message);
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred while starting the class.');
+      Alert.alert('Error', 'An unexpected error occurred while starting the attendance session.');
     } finally {
       setStartingSubjectId(null);
     }

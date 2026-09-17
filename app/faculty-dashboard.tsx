@@ -97,7 +97,7 @@ export default function FacultyDashboard() {
     if (result.ok) {
       router.push('/faculty-active-class' as never);
     } else {
-      Alert.alert('Unable to Start Class', result.message);
+      Alert.alert('Unable to Start Attendance', result.message);
     }
   };
 
@@ -178,9 +178,11 @@ export default function FacultyDashboard() {
           </Text>
 
           <View style={styles.activeOtpBox}>
-            <View>
-              <Text style={styles.activeOtpLabel}>CURRENT BROADCAST CODE</Text>
-              <Text style={styles.activeOtpCode}>{activeSession.otp}</Text>
+            <View style={styles.activeOtpRow}>
+              <View>
+                <Text style={styles.activeOtpLabel}>CURRENT BROADCAST CODE</Text>
+                <Text style={styles.activeOtpCode}>{activeSession.otp}</Text>
+              </View>
             </View>
             <AppButton
               title="Command Center"
@@ -188,6 +190,7 @@ export default function FacultyDashboard() {
               variant="primary"
               size="medium"
               icon="arrow.up.right"
+              style={styles.commandCenterBtn}
             />
           </View>
         </Card>
@@ -195,7 +198,7 @@ export default function FacultyDashboard() {
         /* Primary Class Starter Button */
         <View style={styles.primaryActionWrap}>
           <AppButton
-            title="Start New Class Session"
+            title="Start New Attendance Session"
             icon="plus.circle.fill"
             onPress={() => {
               if (assignedSubjects.length === 1) {
@@ -277,7 +280,7 @@ export default function FacultyDashboard() {
                   />
                 ) : (
                   <AppButton
-                    title="Start Class"
+                    title="Start Attendance"
                     onPress={() => handleStartClass(subject)}
                     variant="secondary"
                     size="small"
@@ -469,12 +472,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   activeOtpBox: {
+    backgroundColor: APP_COLORS.subSurface,
+    padding: 14,
+    borderRadius: TOKENS.rounded.md,
+    gap: 12,
+  },
+  activeOtpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.subSurface,
-    padding: 12,
-    borderRadius: TOKENS.rounded.md,
+  },
+  commandCenterBtn: {
+    width: '100%',
   },
   activeOtpLabel: {
     fontSize: 10,

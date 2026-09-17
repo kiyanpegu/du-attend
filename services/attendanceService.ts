@@ -367,7 +367,7 @@ export const attendanceService = {
     if (errorMessage || !createdSession) {
       return {
         ok: false,
-        message: errorMessage ?? 'Failed to start class session.',
+        message: errorMessage ?? 'Failed to start attendance session.',
         data: existingSessionData,
       };
     }

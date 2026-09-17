@@ -261,7 +261,7 @@ export default function FacultyActiveClassScreen() {
             You do not currently have any live attendance class running. Select a course to launch an OTP.
           </Text>
           <AppButton
-            title="Start a Class"
+            title="Start Attendance"
             onPress={() => router.replace('/faculty-select-subject' as never)}
             variant="primary"
             style={styles.startClassBtn}
@@ -805,17 +805,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    gap: 8,
   },
   otpHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flex: 1,
+    flexShrink: 1,
   },
   otpHeaderLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: APP_COLORS.textSecondary,
-    letterSpacing: 1.1,
+    letterSpacing: 0.8,
+    flexShrink: 1,
   },
   statusPill: {
     paddingHorizontal: 8,
@@ -858,17 +862,17 @@ const styles = StyleSheet.create({
   },
   digitCluster: {
     backgroundColor: APP_COLORS.canvas,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
   },
   digitText: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: '800',
     color: APP_COLORS.obsidian,
-    letterSpacing: 8,
+    letterSpacing: 6,
     fontVariant: ['tabular-nums'],
   },
   digitDivider: {
