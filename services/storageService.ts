@@ -91,6 +91,7 @@ function mergeSeedData(database: Partial<LocalDatabase>): LocalDatabase {
     facultyAssignments: mergeById(database.facultyAssignments ?? [], seed.facultyAssignments),
     attendanceSessions: Array.isArray(database.attendanceSessions) ? database.attendanceSessions : [],
     attendanceRecords: Array.isArray(database.attendanceRecords) ? database.attendanceRecords : [],
+    scheduleOverrides: Array.isArray(database.scheduleOverrides) ? database.scheduleOverrides : [],
   };
 }
 

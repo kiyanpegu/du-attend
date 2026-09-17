@@ -1,5 +1,5 @@
 import { isCloudConfigured, supabase } from '@/config/cloud';
-import type { AttendanceRecord, AttendanceSession, Role, User } from '@/types/models';
+import type { AttendanceRecord, AttendanceSession, Role, ScheduleOverride, User } from '@/types/models';
 
 // Map PostgreSQL snake_case to frontend camelCase
 function toSessionModel(row: any): AttendanceSession {
@@ -13,6 +13,26 @@ function toSessionModel(row: any): AttendanceSession {
     otp: row.otp,
     otpExpiresAt: row.otp_expires_at,
     cancelledAt: row.cancelled_at ?? null,
+  };
+}
+
+function toOverrideModel(row: any): ScheduleOverride {
+  return {
+    id: row.id,
+    timetableItemId: row.timetable_item_id,
+    subjectId: row.subject_id,
+    facultyId: row.faculty_id,
+    facultyUserId: row.faculty_user_id,
+    facultyName: row.faculty_name,
+    action: row.action,
+    reason: row.reason,
+    originalDay: row.original_day,
+    originalTimeSlot: row.original_time_slot,
+    newDayOfWeek: row.new_day_of_week,
+    newTimeSlot: row.new_time_slot,
+    newRoom: row.new_room,
+    createdAt: row.created_at,
+    active: row.active ?? true,
   };
 }
 
@@ -242,6 +262,63 @@ export const cloudService = {
       };
     } catch {
       return () => {};
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // Schedule Overrides (Cancellations & Reschedules)
+  // --------------------------------------------------------------------------
+  async getActiveScheduleOverrides(): Promise<ScheduleOverride[]> {
+    if (!this.isOnline() || !supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('schedule_overrides')
+        .select('*')
+        .eq('active', true);
+
+      if (error || !data) return [];
+      return data.map(toOverrideModel);
+    } catch {
+      return [];
+    }
+  },
+
+  async createScheduleOverride(override: ScheduleOverride): Promise<boolean> {
+    if (!this.isOnline() || !supabase) return false;
+    try {
+      const { error } = await supabase.from('schedule_overrides').upsert({
+        id: override.id,
+        timetable_item_id: override.timetableItemId,
+        subject_id: override.subjectId,
+        faculty_id: override.facultyId,
+        faculty_user_id: override.facultyUserId,
+        faculty_name: override.facultyName,
+        action: override.action,
+        reason: override.reason,
+        original_day: override.originalDay,
+        original_time_slot: override.originalTimeSlot,
+        new_day_of_week: override.newDayOfWeek,
+        new_time_slot: override.newTimeSlot,
+        new_room: override.newRoom,
+        created_at: override.createdAt,
+        active: override.active,
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  async deactivateScheduleOverride(overrideId: string): Promise<boolean> {
+    if (!this.isOnline() || !supabase) return false;
+    try {
+      const { error } = await supabase
+        .from('schedule_overrides')
+        .update({ active: false })
+        .eq('id', overrideId);
+      return !error;
+    } catch {
+      return false;
     }
   },
 };

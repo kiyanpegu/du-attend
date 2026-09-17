@@ -8,7 +8,8 @@ import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { facultyService } from '@/services/facultyService';
-import type { FacultyDashboardData, Subject } from '@/types/models';
+import { scheduleService } from '@/services/scheduleService';
+import type { ClassScheduleItem, DayOfWeek, FacultyDashboardData, Subject } from '@/types/models';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,6 +17,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 export default function FacultyDashboard() {
   const router = useRouter();
   const [data, setData] = useState<FacultyDashboardData | null>(null);
+  const [todaySchedule, setTodaySchedule] = useState<{ day: DayOfWeek; items: ClassScheduleItem[]; isWeekend: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -26,7 +28,10 @@ export default function FacultyDashboard() {
       return;
     }
 
-    const dashboard = await facultyService.getDashboard(user.id);
+    const [dashboard, sched] = await Promise.all([
+      facultyService.getDashboard(user.id),
+      scheduleService.getTodaySchedule(user.id, 'faculty'),
+    ]);
 
     if (!dashboard) {
       router.replace('/faculty-login' as never);
@@ -34,6 +39,7 @@ export default function FacultyDashboard() {
     }
 
     setData(dashboard);
+    setTodaySchedule(sched);
     setLoading(false);
   }, [router]);
 
@@ -232,6 +238,70 @@ export default function FacultyDashboard() {
         </View>
       </View>
 
+      {/* Today's Teaching Schedule Section */}
+      {todaySchedule && todaySchedule.items.length > 0 && (
+        <View style={styles.schedulePreviewSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeading}>TODAY'S TEACHING SCHEDULE ({todaySchedule.day.toUpperCase()})</Text>
+            <TouchableOpacity onPress={() => router.push('/faculty-schedule' as never)}>
+              <Text style={styles.viewAllLink}>Manage Schedule →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {todaySchedule.items.map((slot) => {
+            const isCancelled = slot.status === 'cancelled';
+            const isRescheduled = slot.status === 'rescheduled';
+            const isLive = slot.status === 'live';
+
+            return (
+              <Card
+                key={slot.id}
+                style={[
+                  styles.todaySlotCard,
+                  isCancelled && styles.slotCancelled,
+                  isLive && styles.slotLive,
+                ]}
+                padded
+              >
+                <View style={styles.slotRow}>
+                  <View style={styles.slotTimeWrap}>
+                    <Text style={styles.slotTime}>{slot.timeSlot.split(' - ')[0]}</Text>
+                    <Text style={styles.slotRoom}>{slot.room}</Text>
+                  </View>
+                  <View style={styles.slotInfoWrap}>
+                    <Text
+                      style={[styles.slotSubject, isCancelled && styles.textStrikethrough]}
+                      numberOfLines={1}
+                    >
+                      {slot.subjectName}
+                    </Text>
+                    <Text style={styles.slotCode}>{slot.subjectCode}</Text>
+                    {isCancelled && (
+                      <Text style={styles.slotCancelledReason} numberOfLines={1}>
+                        Cancelled: {slot.cancellationReason || 'Faculty unavailable'}
+                      </Text>
+                    )}
+                    {isRescheduled && slot.rescheduledTo && (
+                      <Text style={styles.slotRescheduledNote} numberOfLines={1}>
+                        Moved to: {slot.rescheduledTo.dayOfWeek} ({slot.rescheduledTo.timeSlot})
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.slotBadgeWrap}>
+                    {isLive && <StatusBadge status="present" label="LIVE" size="small" />}
+                    {isCancelled && <StatusBadge status="shortage" label="CANCELLED" size="small" />}
+                    {isRescheduled && <StatusBadge status="attention" label="MOVED" size="small" />}
+                    {!isLive && !isCancelled && !isRescheduled && (
+                      <StatusBadge status="safe" label="UPCOMING" size="small" />
+                    )}
+                  </View>
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      )}
+
       {/* Assigned Subjects Section */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeading}>ASSIGNED COURSES</Text>
@@ -299,6 +369,21 @@ export default function FacultyDashboard() {
       </View>
 
       <View style={styles.modulesGrid}>
+        <TouchableOpacity
+          style={styles.moduleCard}
+          onPress={() => router.push('/faculty-schedule' as never)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.moduleIconWrap, { backgroundColor: '#FFF7ED' }]}>
+            <IconSymbol size={20} name="calendar" color={APP_COLORS.secondaryWarm} />
+          </View>
+          <View style={styles.moduleTextWrap}>
+            <Text style={styles.moduleTitle}>Teaching Schedule</Text>
+            <Text style={styles.moduleSubtitle}>Cancel, reschedule & manage class slots</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.moduleCard}
           onPress={() => router.push('/faculty-reports' as never)}
@@ -706,5 +791,80 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 16,
+  },
+  schedulePreviewSection: {
+    marginBottom: TOKENS.spacing.lg,
+  },
+  todaySlotCard: {
+    marginBottom: 8,
+    borderRadius: TOKENS.rounded.md,
+    backgroundColor: APP_COLORS.surface,
+  },
+  slotCancelled: {
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+    borderWidth: 1,
+    backgroundColor: '#FFFDFD',
+  },
+  slotLive: {
+    borderColor: APP_COLORS.primaryWarm,
+    borderWidth: 1.5,
+  },
+  slotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  slotTimeWrap: {
+    width: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: APP_COLORS.subSurface,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: TOKENS.rounded.sm,
+  },
+  slotTime: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: APP_COLORS.obsidian,
+  },
+  slotRoom: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  slotInfoWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  slotSubject: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+  },
+  slotCode: {
+    fontSize: 11,
+    color: APP_COLORS.textSecondary,
+    marginTop: 1,
+  },
+  slotCancelledReason: {
+    fontSize: 10,
+    color: APP_COLORS.danger,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  slotRescheduledNote: {
+    fontSize: 10,
+    color: APP_COLORS.attentionText,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  slotBadgeWrap: {
+    flexShrink: 0,
+  },
+  textStrikethrough: {
+    textDecorationLine: 'line-through',
+    color: APP_COLORS.textMuted,
   },
 });

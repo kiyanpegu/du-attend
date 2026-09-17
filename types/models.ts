@@ -121,6 +121,7 @@ export interface LocalDatabase {
   facultyAssignments: FacultyAssignment[];
   attendanceSessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
+  scheduleOverrides: ScheduleOverride[];
 }
 
 export interface SubjectAttendanceSummary {
@@ -219,6 +220,37 @@ export interface ClassScheduleItem {
   subjectName: string;
   room: string;
   facultyName: string;
-  status?: 'live' | 'upcoming' | 'completed';
+  status?: 'live' | 'upcoming' | 'completed' | 'cancelled' | 'rescheduled';
+  cancellationReason?: string;
+  rescheduledTo?: {
+    dayOfWeek: DayOfWeek;
+    timeSlot: string;
+    room?: string;
+    reason?: string;
+  };
+  rescheduledFrom?: {
+    dayOfWeek: DayOfWeek;
+    timeSlot: string;
+    originalRoom?: string;
+  };
+  overrideId?: string;
+}
+
+export interface ScheduleOverride {
+  id: string;
+  timetableItemId: string;
+  subjectId: string;
+  facultyId: string;
+  facultyUserId: string;
+  facultyName: string;
+  action: 'cancelled' | 'rescheduled';
+  reason?: string;
+  originalDay: DayOfWeek;
+  originalTimeSlot: string;
+  newDayOfWeek?: DayOfWeek;
+  newTimeSlot?: string;
+  newRoom?: string;
+  createdAt: string;
+  active: boolean;
 }
 

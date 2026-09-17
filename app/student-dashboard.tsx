@@ -397,45 +397,76 @@ export default function StudentDashboard() {
             </View>
 
             <View style={styles.scheduleList}>
-              {todaySchedule.items.slice(0, 3).map((item) => (
-                <Card
-                  key={item.id}
-                  style={[styles.scheduleCard, item.status === 'live' && styles.scheduleCardLive]}
-                  onPress={() => {
-                    if (item.status === 'live') {
-                      router.push('/student-mark-attendance' as never);
-                    } else {
-                      router.push('/student-schedule' as never);
-                    }
-                  }}
-                  padded={false}
-                >
-                  <View style={styles.scheduleCardInner}>
-                    <View style={styles.scheduleTimeBadge}>
-                      <IconSymbol size={13} name="clock.fill" color={APP_COLORS.primaryWarm} />
-                      <Text style={styles.scheduleTimeText}>{item.timeSlot.split(' - ')[0]}</Text>
-                    </View>
+              {todaySchedule.items.slice(0, 3).map((item) => {
+                const isCancelled = item.status === 'cancelled';
+                const isRescheduled = item.status === 'rescheduled';
+                const isLive = !isCancelled && item.status === 'live';
 
-                    <View style={styles.scheduleDetails}>
-                      <Text style={styles.scheduleSubject} numberOfLines={1}>
-                        {item.subjectName}
-                      </Text>
-                      <Text style={styles.scheduleMeta}>
-                        {item.subjectCode} • {item.room} • {item.facultyName}
-                      </Text>
-                    </View>
-
-                    {item.status === 'live' ? (
-                      <View style={styles.scheduleLiveBadge}>
-                        <View style={styles.scheduleLiveDot} />
-                        <Text style={styles.scheduleLiveText}>LIVE</Text>
+                return (
+                  <Card
+                    key={item.id}
+                    style={[
+                      styles.scheduleCard,
+                      isLive && styles.scheduleCardLive,
+                      isCancelled && styles.scheduleCardCancelled,
+                    ]}
+                    onPress={() => {
+                      if (isLive) {
+                        router.push('/student-mark-attendance' as never);
+                      } else {
+                        router.push('/student-schedule' as never);
+                      }
+                    }}
+                    padded={false}
+                  >
+                    <View style={styles.scheduleCardInner}>
+                      <View style={styles.scheduleTimeBadge}>
+                        <IconSymbol size={13} name="clock.fill" color={APP_COLORS.primaryWarm} />
+                        <Text style={styles.scheduleTimeText}>{item.timeSlot.split(' - ')[0]}</Text>
                       </View>
-                    ) : (
-                      <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
-                    )}
-                  </View>
-                </Card>
-              ))}
+
+                      <View style={styles.scheduleDetails}>
+                        <Text
+                          style={[styles.scheduleSubject, isCancelled && styles.textStrikethrough]}
+                          numberOfLines={1}
+                        >
+                          {item.subjectName}
+                        </Text>
+                        <Text style={styles.scheduleMeta}>
+                          {item.subjectCode} • {item.room} • {item.facultyName}
+                        </Text>
+                        {isCancelled && (
+                          <Text style={styles.scheduleCancelledNote} numberOfLines={1}>
+                            Cancelled: {item.cancellationReason || 'Faculty on leave'}
+                          </Text>
+                        )}
+                        {isRescheduled && item.rescheduledTo && (
+                          <Text style={styles.scheduleRescheduledNote} numberOfLines={1}>
+                            Moved to: {item.rescheduledTo.dayOfWeek} ({item.rescheduledTo.timeSlot})
+                          </Text>
+                        )}
+                      </View>
+
+                      {isLive ? (
+                        <View style={styles.scheduleLiveBadge}>
+                          <View style={styles.scheduleLiveDot} />
+                          <Text style={styles.scheduleLiveText}>LIVE</Text>
+                        </View>
+                      ) : isCancelled ? (
+                        <View style={styles.scheduleCancelledBadge}>
+                          <Text style={styles.scheduleCancelledBadgeText}>CANCELLED</Text>
+                        </View>
+                      ) : isRescheduled ? (
+                        <View style={styles.scheduleRescheduledBadge}>
+                          <Text style={styles.scheduleRescheduledBadgeText}>MOVED</Text>
+                        </View>
+                      ) : (
+                        <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+                      )}
+                    </View>
+                  </Card>
+                );
+              })}
             </View>
           </View>
         )}
@@ -946,6 +977,50 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: APP_COLORS.primaryWarm,
     letterSpacing: 0.3,
+  },
+  scheduleCardCancelled: {
+    borderColor: 'rgba(220, 38, 38, 0.25)',
+    backgroundColor: '#FFFDFD',
+  },
+  scheduleCancelledNote: {
+    fontSize: 10,
+    color: APP_COLORS.danger,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  scheduleRescheduledNote: {
+    fontSize: 10,
+    color: APP_COLORS.attentionText,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  scheduleCancelledBadge: {
+    backgroundColor: APP_COLORS.shortageBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  scheduleCancelledBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: APP_COLORS.danger,
+    letterSpacing: 0.5,
+  },
+  scheduleRescheduledBadge: {
+    backgroundColor: APP_COLORS.attentionBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  scheduleRescheduledBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: APP_COLORS.attentionText,
+    letterSpacing: 0.5,
+  },
+  textStrikethrough: {
+    textDecorationLine: 'line-through',
+    color: APP_COLORS.textMuted,
   },
 
   /* 6. Course Breakdown Cards */

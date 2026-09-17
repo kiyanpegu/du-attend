@@ -152,6 +152,7 @@ export const SEED_DATABASE: LocalDatabase = {
   })),
   attendanceSessions: [],
   attendanceRecords: [],
+  scheduleOverrides: [],
 };
 
 export const DEVELOPMENT_CREDENTIALS = {

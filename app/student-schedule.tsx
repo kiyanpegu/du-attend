@@ -227,7 +227,10 @@ export default function StudentScheduleScreen() {
             />
           ) : (
             scheduleItems.map((item, index) => {
-              const isLive = liveSessionSubjectIds.has(item.subjectId);
+              const isCancelled = item.status === 'cancelled';
+              const isRescheduledAway = item.status === 'rescheduled';
+              const isRescheduledIn = !!item.rescheduledFrom;
+              const isLive = !isCancelled && liveSessionSubjectIds.has(item.subjectId);
               const timelineStatus = getClassTimelineStatus(item.timeSlot, isLive, isSelectedDayToday);
               const isPast = timelineStatus === 'past';
 
@@ -237,7 +240,8 @@ export default function StudentScheduleScreen() {
                   style={[
                     styles.classCard,
                     isLive && styles.classCardLive,
-                    isPast && styles.classCardPast,
+                    isPast && !isCancelled && styles.classCardPast,
+                    isCancelled && styles.cardCancelled,
                   ]}
                   padded={false}
                 >
@@ -255,7 +259,19 @@ export default function StudentScheduleScreen() {
                         </Text>
                       </View>
 
-                      {isLive ? (
+                      {isCancelled ? (
+                        <View style={styles.cancelledPill}>
+                          <Text style={styles.cancelledPillText}>CANCELLED</Text>
+                        </View>
+                      ) : isRescheduledAway ? (
+                        <View style={styles.rescheduledPill}>
+                          <Text style={styles.rescheduledPillText}>RESCHEDULED</Text>
+                        </View>
+                      ) : isRescheduledIn ? (
+                        <View style={styles.extraPill}>
+                          <Text style={styles.extraPillText}>EXTRA SLOT</Text>
+                        </View>
+                      ) : isLive ? (
                         <View style={styles.livePill}>
                           <View style={styles.liveDot} />
                           <Text style={styles.livePillText}>CLASS LIVE</Text>
@@ -279,7 +295,11 @@ export default function StudentScheduleScreen() {
                         <Text style={styles.syllabusTag}>Core Theory</Text>
                       </View>
                       <Text
-                        style={[styles.subjectName, isPast && styles.subjectNamePast]}
+                        style={[
+                          styles.subjectName,
+                          isPast && styles.subjectNamePast,
+                          isCancelled && styles.textStrikethrough,
+                        ]}
                         numberOfLines={2}
                       >
                         {item.subjectName}
@@ -301,8 +321,38 @@ export default function StudentScheduleScreen() {
                       </View>
                     </View>
 
-                    {/* Urgent Action Banner if Class is Live */}
-                    {isLive && (
+                    {/* Cancellation Notice Banner */}
+                    {isCancelled && (
+                      <View style={styles.noticeBannerCancelled}>
+                        <IconSymbol size={14} name="exclamationmark.triangle.fill" color={APP_COLORS.danger} />
+                        <Text style={styles.noticeTextCancelled} numberOfLines={2}>
+                          Class Cancelled: {item.cancellationReason || 'Instructor on official leave'}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Rescheduled Away Notice Banner */}
+                    {isRescheduledAway && item.rescheduledTo && (
+                      <View style={styles.noticeBannerRescheduled}>
+                        <IconSymbol size={14} name="arrow.triangle.swap" color={APP_COLORS.attentionText} />
+                        <Text style={styles.noticeTextRescheduled} numberOfLines={2}>
+                          Moved to {item.rescheduledTo.dayOfWeek} ({item.rescheduledTo.timeSlot}) • Room {item.rescheduledTo.room || item.room}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Rescheduled In Notice Banner */}
+                    {isRescheduledIn && item.rescheduledFrom && (
+                      <View style={styles.noticeBannerExtra}>
+                        <IconSymbol size={14} name="calendar.badge.clock" color={APP_COLORS.safeText} />
+                        <Text style={styles.noticeTextExtra} numberOfLines={2}>
+                          Rescheduled Class • Original: {item.rescheduledFrom.dayOfWeek} ({item.rescheduledFrom.timeSlot})
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Urgent Action Banner if Class is Live and NOT Cancelled */}
+                    {isLive && !isCancelled && (
                       <View style={styles.liveActionFooter}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.liveActionPrompt}>Attendance is active right now</Text>
@@ -705,6 +755,99 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: APP_COLORS.textSecondary,
     marginTop: 1,
+  },
+  cardCancelled: {
+    borderColor: 'rgba(220, 38, 38, 0.25)',
+    borderWidth: 1,
+    backgroundColor: '#FFFDFD',
+  },
+  cancelledPill: {
+    backgroundColor: APP_COLORS.shortageBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  cancelledPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.danger,
+    letterSpacing: 0.6,
+  },
+  rescheduledPill: {
+    backgroundColor: APP_COLORS.attentionBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  rescheduledPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.attentionText,
+    letterSpacing: 0.6,
+  },
+  extraPill: {
+    backgroundColor: APP_COLORS.safeBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  extraPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.safeText,
+    letterSpacing: 0.6,
+  },
+  textStrikethrough: {
+    textDecorationLine: 'line-through',
+    color: APP_COLORS.textMuted,
+  },
+  noticeBannerCancelled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF5F5',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  noticeTextCancelled: {
+    fontSize: 12,
+    color: APP_COLORS.danger,
+    fontWeight: '600',
+    flex: 1,
+  },
+  noticeBannerRescheduled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF9F0',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  noticeTextRescheduled: {
+    fontSize: 12,
+    color: APP_COLORS.attentionText,
+    fontWeight: '600',
+    flex: 1,
+  },
+  noticeBannerExtra: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F0FAF5',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  noticeTextExtra: {
+    fontSize: 12,
+    color: APP_COLORS.safeText,
+    fontWeight: '600',
+    flex: 1,
   },
 });
 
