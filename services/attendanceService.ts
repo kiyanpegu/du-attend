@@ -297,6 +297,37 @@ function buildStudentHistory(
   return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+async function syncActiveSessionsWithCloud(): Promise<void> {
+  if (!cloudService.isOnline()) return;
+  try {
+    const cloudSessions = await cloudService.getActiveSessions();
+    const cloudActiveIds = new Set(cloudSessions.map((s) => s.id));
+
+    await storageService.updateDatabase((database) => {
+      // 1. Upsert active sessions from cloud into local DB
+      cloudSessions.forEach((cSession) => {
+        const idx = database.attendanceSessions.findIndex((s) => s.id === cSession.id);
+        if (idx >= 0) {
+          database.attendanceSessions[idx] = cSession;
+        } else {
+          database.attendanceSessions.push(cSession);
+        }
+      });
+
+      // 2. Mark any session in local DB as ended if it is NO LONGER active in the cloud!
+      // This prevents stale/ended sessions from persisting on devices as active ghost classes.
+      database.attendanceSessions.forEach((session) => {
+        if (session.status === 'active' && !cloudActiveIds.has(session.id)) {
+          session.status = 'ended';
+          session.endedAt = session.endedAt || new Date().toISOString();
+        }
+      });
+    });
+  } catch {
+    // Fallback to local cache
+  }
+}
+
 export const attendanceService = {
   getSecondsRemaining,
 
@@ -449,7 +480,10 @@ export const attendanceService = {
     };
   },
 
+
   async getActiveSessionForFaculty(facultyUserId: string) {
+    await syncActiveSessionsWithCloud();
+
     const database = await storageService.getDatabase();
     const faculty = database.faculties.find((item) => item.userId === facultyUserId && item.active);
 
@@ -457,31 +491,15 @@ export const attendanceService = {
       return null;
     }
 
-    return (
-      database.attendanceSessions.find((session) => session.facultyId === faculty.id && session.status === 'active') ?? null
-    );
+    const activeSessions = database.attendanceSessions
+      .filter((session) => session.facultyId === faculty.id && session.status === 'active')
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+
+    return activeSessions[0] ?? null;
   },
 
   async getActiveSessionsForStudent(studentUserId: string) {
-    if (cloudService.isOnline()) {
-      try {
-        const cloudSessions = await cloudService.getActiveSessions();
-        if (cloudSessions.length > 0) {
-          await storageService.updateDatabase((database) => {
-            cloudSessions.forEach((cSession) => {
-              const idx = database.attendanceSessions.findIndex((s) => s.id === cSession.id);
-              if (idx >= 0) {
-                database.attendanceSessions[idx] = cSession;
-              } else {
-                database.attendanceSessions.push(cSession);
-              }
-            });
-          });
-        }
-      } catch {
-        // Fallback to local
-      }
-    }
+    await syncActiveSessionsWithCloud();
 
     const database = await storageService.getDatabase();
     const student = database.students.find((item) => item.userId === studentUserId && item.active);
@@ -515,25 +533,7 @@ export const attendanceService = {
       return { ok: false, message: 'OTP must be exactly 6 digits.' };
     }
 
-    if (cloudService.isOnline()) {
-      try {
-        const cloudSessions = await cloudService.getActiveSessions();
-        if (cloudSessions.length > 0) {
-          await storageService.updateDatabase((database) => {
-            cloudSessions.forEach((cSession) => {
-              const idx = database.attendanceSessions.findIndex((s) => s.id === cSession.id);
-              if (idx >= 0) {
-                database.attendanceSessions[idx] = cSession;
-              } else {
-                database.attendanceSessions.push(cSession);
-              }
-            });
-          });
-        }
-      } catch {
-        // Fallback to local
-      }
-    }
+    await syncActiveSessionsWithCloud();
 
     let createdRecord: AttendanceRecord | null = null;
     let existingRecordFound: AttendanceRecord | null = null;

@@ -76,7 +76,8 @@ export const cloudService = {
       const { data, error } = await supabase
         .from('attendance_sessions')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('started_at', { ascending: false });
 
       if (error || !data) return [];
       return data.map(toSessionModel);

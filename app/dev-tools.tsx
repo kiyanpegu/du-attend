@@ -254,7 +254,7 @@ export default function DevToolsScreen() {
             <View style={styles.onlineDot} />
             <Text style={styles.engineText}>AsyncStorage Local DB • Dual-Engine Ready</Text>
           </View>
-          <Text style={[styles.versionLabel, { fontFamily: monoFont }]}>v1.2.0-preview</Text>
+          <Text style={[styles.versionLabel, { fontFamily: monoFont }]}>v1.2.1-preview</Text>
         </View>
 
         <View style={styles.statRowsContainer}>
