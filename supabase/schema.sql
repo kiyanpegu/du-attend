@@ -123,31 +123,74 @@ ALTER TABLE faculty_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
 
--- Allow Public Access for Demo Prototype Mode
+-- Allow Public Access for Demo Prototype Mode (Idempotent)
+DROP POLICY IF EXISTS "Public Read All" ON universities;
 CREATE POLICY "Public Read All" ON universities FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON departments;
 CREATE POLICY "Public Read All" ON departments FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON programmes;
 CREATE POLICY "Public Read All" ON programmes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON semesters;
 CREATE POLICY "Public Read All" ON semesters FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON users;
 CREATE POLICY "Public Read All" ON users FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON students;
 CREATE POLICY "Public Read All" ON students FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON faculties;
 CREATE POLICY "Public Read All" ON faculties FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON subjects;
 CREATE POLICY "Public Read All" ON subjects FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON enrollments;
 CREATE POLICY "Public Read All" ON enrollments FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read All" ON faculty_assignments;
 CREATE POLICY "Public Read All" ON faculty_assignments FOR SELECT USING (true);
 
 -- Attendance Sessions Policies
+DROP POLICY IF EXISTS "Public Read Sessions" ON attendance_sessions;
 CREATE POLICY "Public Read Sessions" ON attendance_sessions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Insert Sessions" ON attendance_sessions;
 CREATE POLICY "Public Insert Sessions" ON attendance_sessions FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Update Sessions" ON attendance_sessions;
 CREATE POLICY "Public Update Sessions" ON attendance_sessions FOR UPDATE USING (true);
 
 -- Attendance Records Policies
+DROP POLICY IF EXISTS "Public Read Records" ON attendance_records;
 CREATE POLICY "Public Read Records" ON attendance_records FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Insert Records" ON attendance_records;
 CREATE POLICY "Public Insert Records" ON attendance_records FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Update Records" ON attendance_records;
 CREATE POLICY "Public Update Records" ON attendance_records FOR UPDATE USING (true);
 
--- Enable Supabase Realtime for Active Class Alerts & Live Rosters
-ALTER PUBLICATION supabase_realtime ADD TABLE attendance_sessions;
-ALTER PUBLICATION supabase_realtime ADD TABLE attendance_records;
+-- Enable Supabase Realtime for Active Class Alerts & Live Rosters (Idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'attendance_sessions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE attendance_sessions;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'attendance_records'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE attendance_records;
+  END IF;
+END $$;
 
 -- ==============================================================================
 -- Initial Seed Data: Dibrugarh University BCA 1st Semester
@@ -221,3 +264,4 @@ INSERT INTO faculty_assignments (id, faculty_id, subject_id, active) VALUES
   ('asgn-fac001-math', 'faculty-fac001', 'subject-mathematics', true),
   ('asgn-fac001-eng', 'faculty-fac001', 'subject-english', true)
 ON CONFLICT (id) DO NOTHING;
+
