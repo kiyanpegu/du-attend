@@ -2,7 +2,7 @@
   "expo": {
     "name": "DU Attend",
     "slug": "CollegeAttendance",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "duattend",
@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.kiyancantcode.CollegeAttendance"
+      "package": "com.kiyancantcode.CollegeAttendance",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
