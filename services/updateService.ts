@@ -16,7 +16,7 @@ const GITHUB_REPO_LATEST_RELEASE_API =
 
 export const updateService = {
   getCurrentVersion(): string {
-    return Constants.expoConfig?.version ?? '1.1.0';
+    return Constants.expoConfig?.version ?? '1.2.0';
   },
 
   getRuntimeVersion(): string {

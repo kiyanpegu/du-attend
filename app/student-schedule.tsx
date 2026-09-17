@@ -1,9 +1,9 @@
 import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
 import { Card } from '@/components/app/Card';
+import { EmptyState } from '@/components/app/EmptyState';
 import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
-import { StatusBadge } from '@/components/app/StatusBadge';
 import { StudentBottomNav } from '@/components/app/StudentBottomNav';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
@@ -12,19 +12,52 @@ import { authService } from '@/services/authService';
 import { studentService } from '@/services/studentService';
 import type { AttendanceSession, ClassScheduleItem, DayOfWeek } from '@/types/models';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
+function getClassTimelineStatus(timeSlot: string, isLive: boolean, isSelectedDayToday: boolean): 'live' | 'past' | 'upcoming' {
+  if (isLive) return 'live';
+  if (!isSelectedDayToday) return 'upcoming';
+
+  try {
+    const parts = timeSlot.split(' - ');
+    if (parts.length < 2) return 'upcoming';
+
+    const endPart = parts[1].trim();
+    const [timeStr, meridiem] = endPart.split(' ');
+    const [hourStr, minStr] = timeStr.split(':');
+    let hours = parseInt(hourStr, 10);
+    const minutes = parseInt(minStr, 10) || 0;
+
+    if (meridiem === 'PM' && hours < 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+
+    const now = new Date();
+    const classEndTime = new Date();
+    classEndTime.setHours(hours, minutes, 0, 0);
+
+    if (now > classEndTime) {
+      return 'past';
+    }
+    return 'upcoming';
+  } catch {
+    return 'upcoming';
+  }
+}
+
 export default function StudentScheduleScreen() {
   const router = useRouter();
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>('Monday');
+  const [todayWeekday, setTodayWeekday] = useState<DayOfWeek>('Monday');
   const [scheduleItems, setScheduleItems] = useState<ClassScheduleItem[]>([]);
   const [activeSessions, setActiveSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const selectedDayRef = useRef<DayOfWeek>('Monday');
+  const hasInitializedRef = useRef(false);
 
-  const loadData = useCallback(async (dayToLoad?: DayOfWeek) => {
+  const loadScheduleForDay = useCallback(async (dayToLoad: DayOfWeek) => {
     try {
       const user = await authService.getActiveUser();
       if (!user || user.role !== 'student') {
@@ -32,9 +65,8 @@ export default function StudentScheduleScreen() {
         return;
       }
 
-      const activeDay = dayToLoad ?? selectedDay;
       const [items, live] = await Promise.all([
-        studentService.getSchedule(activeDay, user.id),
+        studentService.getSchedule(dayToLoad, user.id),
         attendanceService.getActiveSessionsForStudent(user.id),
       ]);
 
@@ -45,21 +77,30 @@ export default function StudentScheduleScreen() {
     } finally {
       setLoading(false);
     }
-  }, [router, selectedDay]);
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {
-      // Auto-detect current weekday on first focus
+      // Auto-detect current weekday on initial focus
       const dayIndex = new Date().getDay();
       const currentWeekday: DayOfWeek = (dayIndex >= 1 && dayIndex <= 5) ? DAYS[dayIndex - 1] : 'Monday';
-      setSelectedDay(currentWeekday);
-      loadData(currentWeekday);
-    }, [loadData])
+      setTodayWeekday(currentWeekday);
+
+      if (!hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+        selectedDayRef.current = currentWeekday;
+        setSelectedDay(currentWeekday);
+        loadScheduleForDay(currentWeekday);
+      } else {
+        loadScheduleForDay(selectedDayRef.current);
+      }
+    }, [loadScheduleForDay])
   );
 
   const handleDaySelect = (day: DayOfWeek) => {
+    selectedDayRef.current = day;
     setSelectedDay(day);
-    loadData(day);
+    loadScheduleForDay(day);
   };
 
   if (loading) {
@@ -67,34 +108,89 @@ export default function StudentScheduleScreen() {
   }
 
   const liveSessionSubjectIds = new Set(activeSessions.map((s) => s.subjectId));
+  const isSelectedDayToday = selectedDay === todayWeekday;
 
   return (
     <View style={styles.screen}>
       <AppScreen scrollable contentContainerStyle={styles.scrollContent}>
-        <Header
-          title="Class Schedule"
-          subtitle="BCA 1st Semester • Weekly Timetable"
-          showBack={false}
-        />
+        {/* Screen Header */}
+        <View style={styles.headerWrapper}>
+          <Header
+            title="Class Schedule"
+            subtitle="BCA 1st Semester • Weekly Timetable"
+            showBack={false}
+          />
+        </View>
 
-        {/* Day Selector Pills */}
-        <View style={styles.daySelectorContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayScroll}>
+        {/* Academic Context Bar */}
+        <View style={styles.contextBar}>
+          <View style={styles.contextLeft}>
+            <View style={styles.contextIconCircle}>
+              <IconSymbol size={15} name="building.columns.fill" color={APP_COLORS.primaryWarm} />
+            </View>
+            <View style={styles.contextTextWrapper}>
+              <Text style={styles.contextTitle} numberOfLines={1}>
+                Centre for Computer Science (CCSA)
+              </Text>
+              <Text style={styles.contextSub} numberOfLines={1}>
+                Dibrugarh University • Regular Timetable
+              </Text>
+            </View>
+          </View>
+          {isSelectedDayToday && (
+            <View style={styles.todayPill}>
+              <Text style={styles.todayPillText}>TODAY</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Tactile Day Selector */}
+        <View style={styles.daySelectorArea}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayScroll}
+          >
             {DAYS.map((day) => {
               const isSelected = day === selectedDay;
+              const isDayToday = day === todayWeekday;
+
               return (
                 <TouchableOpacity
                   key={day}
-                  style={[styles.dayPill, isSelected && styles.dayPillActive]}
+                  style={[
+                    styles.dayTab,
+                    isSelected ? styles.dayTabSelected : styles.dayTabUnselected,
+                  ]}
                   onPress={() => handleDaySelect(day)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isSelected }}
                 >
-                  <Text style={[styles.dayPillText, isSelected && styles.dayPillTextActive]}>
-                    {day.slice(0, 3)}
-                  </Text>
-                  <Text style={[styles.dayPillSubtext, isSelected && styles.dayPillSubtextActive]}>
+                  <View style={styles.dayTabHeader}>
+                    <Text
+                      style={[
+                        styles.dayTabShort,
+                        isSelected ? styles.dayTabShortSelected : styles.dayTabShortUnselected,
+                      ]}
+                    >
+                      {day.slice(0, 3).toUpperCase()}
+                    </Text>
+                    {isDayToday && (
+                      <View
+                        style={[
+                          styles.todayDot,
+                          isSelected ? styles.todayDotSelected : styles.todayDotUnselected,
+                        ]}
+                      />
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.dayTabFull,
+                      isSelected ? styles.dayTabFullSelected : styles.dayTabFullUnselected,
+                    ]}
+                  >
                     {day}
                   </Text>
                 </TouchableOpacity>
@@ -103,78 +199,132 @@ export default function StudentScheduleScreen() {
           </ScrollView>
         </View>
 
-        {/* Selected Day Header */}
-        <View style={styles.daySummaryBar}>
-          <View style={styles.daySummaryLeft}>
-            <IconSymbol size={18} name="calendar" color={APP_COLORS.primary} />
-            <Text style={styles.daySummaryTitle}>{`${selectedDay}'s Classes`}</Text>
+        {/* Selected Day Summary Bar */}
+        <View style={styles.summaryBar}>
+          <View style={styles.summaryLeft}>
+            <Text style={styles.summaryTitle}>{`${selectedDay}'s Classes`}</Text>
+            <Text style={styles.summarySub}>
+              {scheduleItems.length === 0
+                ? 'No classes scheduled'
+                : `${scheduleItems.length} Lecture${scheduleItems.length === 1 ? '' : 's'} Planned`}
+            </Text>
           </View>
-          <Text style={styles.daySummaryCount}>{scheduleItems.length} Sessions</Text>
+          {isSelectedDayToday && activeSessions.length > 0 && (
+            <View style={styles.activeClassIndicator}>
+              <View style={styles.activePulseDot} />
+              <Text style={styles.activeIndicatorText}>SESSION LIVE</Text>
+            </View>
+          )}
         </View>
 
-        {/* Schedule List */}
-        <View style={styles.timelineList}>
-          {scheduleItems.map((item, index) => {
-            const isLive = liveSessionSubjectIds.has(item.subjectId);
+        {/* Schedule Items List */}
+        <View style={styles.scheduleList}>
+          {scheduleItems.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title={`No Classes on ${selectedDay}`}
+              message="There are no academic lectures scheduled for this day in the BCA 1st Semester syllabus."
+            />
+          ) : (
+            scheduleItems.map((item, index) => {
+              const isLive = liveSessionSubjectIds.has(item.subjectId);
+              const timelineStatus = getClassTimelineStatus(item.timeSlot, isLive, isSelectedDayToday);
+              const isPast = timelineStatus === 'past';
 
-            return (
-              <Card
-                key={item.id}
-                style={[styles.classCard, isLive && styles.classCardLive]}
-                padded={false}
-              >
-                <View style={styles.cardHeader}>
-                  <View style={styles.subjectMetaWrap}>
-                    <View style={styles.subjectCodePill}>
-                      <Text style={styles.subjectCodeText}>{item.subjectCode}</Text>
+              return (
+                <Card
+                  key={item.id}
+                  style={[
+                    styles.classCard,
+                    isLive && styles.classCardLive,
+                    isPast && styles.classCardPast,
+                  ]}
+                  padded={false}
+                >
+                  <View style={styles.classCardInner}>
+                    {/* Header Row: Time and Status */}
+                    <View style={styles.cardHeaderRow}>
+                      <View style={[styles.timeBadge, isLive && styles.timeBadgeLive]}>
+                        <IconSymbol
+                          size={13}
+                          name="clock.fill"
+                          color={isLive ? APP_COLORS.primaryWarm : APP_COLORS.textSecondary}
+                        />
+                        <Text style={[styles.timeBadgeText, isLive && styles.timeBadgeTextLive]}>
+                          {item.timeSlot}
+                        </Text>
+                      </View>
+
+                      {isLive ? (
+                        <View style={styles.livePill}>
+                          <View style={styles.liveDot} />
+                          <Text style={styles.livePillText}>CLASS LIVE</Text>
+                        </View>
+                      ) : isPast ? (
+                        <View style={styles.pastPill}>
+                          <IconSymbol size={11} name="checkmark" color={APP_COLORS.textMuted} />
+                          <Text style={styles.pastPillText}>Completed</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.periodText}>{`Period ${index + 1}`}</Text>
+                      )}
                     </View>
-                    <View style={styles.timeWrap}>
-                      <IconSymbol size={13} name="clock.fill" color={APP_COLORS.textSecondary} />
-                      <Text style={styles.timeText}>{item.timeSlot}</Text>
+
+                    {/* Subject Title and Course Code */}
+                    <View style={styles.subjectBlock}>
+                      <View style={styles.codeRow}>
+                        <View style={styles.courseCodePill}>
+                          <Text style={styles.courseCodeText}>{item.subjectCode}</Text>
+                        </View>
+                        <Text style={styles.syllabusTag}>Core Theory</Text>
+                      </View>
+                      <Text
+                        style={[styles.subjectName, isPast && styles.subjectNamePast]}
+                        numberOfLines={2}
+                      >
+                        {item.subjectName}
+                      </Text>
                     </View>
+
+                    {/* Metadata Row: Room and Faculty */}
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                        <IconSymbol size={13} name="building.columns.fill" color={APP_COLORS.textMuted} />
+                        <Text style={styles.metaItemText}>{item.room}</Text>
+                      </View>
+                      <View style={styles.metaDivider} />
+                      <View style={styles.metaItem}>
+                        <IconSymbol size={13} name="person.fill" color={APP_COLORS.textMuted} />
+                        <Text style={styles.metaItemText} numberOfLines={1}>
+                          {item.facultyName}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Urgent Action Banner if Class is Live */}
+                    {isLive && (
+                      <View style={styles.liveActionFooter}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.liveActionPrompt}>Attendance is active right now</Text>
+                          <Text style={styles.liveActionSub}>Verify OTP to record presence</Text>
+                        </View>
+                        <AppButton
+                          title="Enter OTP"
+                          onPress={() => router.push('/student-mark-attendance' as never)}
+                          size="small"
+                          variant="primary"
+                        />
+                      </View>
+                    )}
                   </View>
-
-                  {isLive ? (
-                    <StatusBadge status="active" label="LIVE CLASS" size="small" />
-                  ) : (
-                    <View style={styles.orderPill}>
-                      <Text style={styles.orderText}>Period {index + 1}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.cardBody}>
-                  <Text style={styles.className}>{item.subjectName}</Text>
-                  
-                  <View style={styles.locationInstructorRow}>
-                    <View style={styles.infoBadge}>
-                      <IconSymbol size={13} name="building.columns.fill" color={APP_COLORS.textMuted} />
-                      <Text style={styles.infoBadgeText}>{item.room}</Text>
-                    </View>
-                    <View style={styles.infoBadge}>
-                      <IconSymbol size={13} name="person.fill" color={APP_COLORS.textMuted} />
-                      <Text style={styles.infoBadgeText}>{item.facultyName}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {isLive && (
-                  <View style={styles.liveActionFooter}>
-                    <Text style={styles.livePromptText}>Attendance is active right now!</Text>
-                    <AppButton
-                      title="Enter OTP"
-                      onPress={() => router.push('/student-mark-attendance' as never)}
-                      size="small"
-                      variant="primary"
-                    />
-                  </View>
-                )}
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })
+          )}
         </View>
       </AppScreen>
 
+      {/* Persistent Bottom Nav Dock */}
       <StudentBottomNav currentTab="schedule" hasActiveClass={activeSessions.length > 0} />
     </View>
   );
@@ -183,178 +333,378 @@ export default function StudentScheduleScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
+    backgroundColor: APP_COLORS.canvas,
   },
   scrollContent: {
-    paddingBottom: 110,
+    padding: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 120,
+    backgroundColor: APP_COLORS.canvas,
   },
-  daySelectorContainer: {
-    paddingVertical: 12,
+  headerWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+
+  /* Academic Context Bar */
+  contextBar: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  contextLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
+  },
+  contextIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF1ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  contextTextWrapper: {
+    flex: 1,
+    minWidth: 0,
+  },
+  contextTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+  },
+  contextSub: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+    marginTop: 1,
+  },
+  todayPill: {
+    flexShrink: 0,
+    backgroundColor: '#EEFAF4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 9999,
+  },
+  todayPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.safeText,
+    letterSpacing: 0.5,
+  },
+
+  /* Tactile Day Selector */
+  daySelectorArea: {
+    marginBottom: 16,
   },
   dayScroll: {
     paddingHorizontal: 16,
     gap: 8,
   },
-  dayPill: {
-    backgroundColor: APP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    borderRadius: 12,
+  dayTab: {
+    borderRadius: 18,
     paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
+    minWidth: 80,
     alignItems: 'center',
-    minWidth: 76,
   },
-  dayPillActive: {
-    backgroundColor: APP_COLORS.primary,
-    borderColor: APP_COLORS.primary,
+  dayTabSelected: {
+    backgroundColor: APP_COLORS.obsidian,
+    shadowColor: '#18191E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  dayPillText: {
-    fontSize: 16,
+  dayTabUnselected: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  dayTabHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayTabShort: {
+    fontSize: 15,
     fontWeight: '800',
-    color: APP_COLORS.textSecondary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
-  dayPillTextActive: {
-    color: APP_COLORS.onPrimary,
+  dayTabShortSelected: {
+    color: '#FFFFFF',
   },
-  dayPillSubtext: {
-    fontSize: 10,
+  dayTabShortUnselected: {
+    color: APP_COLORS.text,
+  },
+  dayTabFull: {
+    fontSize: 11,
     fontWeight: '500',
-    color: APP_COLORS.textMuted,
     marginTop: 2,
   },
-  dayPillSubtextActive: {
-    color: 'rgba(255,255,255,0.85)',
+  dayTabFullSelected: {
+    color: 'rgba(255, 255, 255, 0.72)',
   },
-  daySummaryBar: {
+  dayTabFullUnselected: {
+    color: APP_COLORS.textMuted,
+  },
+  todayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  todayDotSelected: {
+    backgroundColor: APP_COLORS.secondaryWarm,
+  },
+  todayDotUnselected: {
+    backgroundColor: APP_COLORS.primaryWarm,
+  },
+
+  /* Selected Day Summary Bar */
+  summaryBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginVertical: 8,
+    marginBottom: 12,
   },
-  daySummaryLeft: {
+  summaryLeft: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: APP_COLORS.text,
+    letterSpacing: -0.3,
+  },
+  summarySub: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  activeClassIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    backgroundColor: '#FFF1ED',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 9999,
   },
-  daySummaryTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: APP_COLORS.text,
+  activePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APP_COLORS.primaryWarm,
   },
-  daySummaryCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: APP_COLORS.textMuted,
+  activeIndicatorText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.primaryWarm,
+    letterSpacing: 0.4,
   },
-  timelineList: {
+
+  /* Schedule Items List */
+  scheduleList: {
     paddingHorizontal: 16,
     gap: 12,
-    marginTop: 8,
   },
   classCard: {
-    backgroundColor: APP_COLORS.surface,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    borderRadius: 14,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
     overflow: 'hidden',
   },
   classCardLive: {
-    borderColor: APP_COLORS.success,
-    backgroundColor: '#12222D',
+    borderColor: 'rgba(255, 94, 54, 0.35)',
+    backgroundColor: '#FFFDFD',
   },
-  cardHeader: {
+  classCardPast: {
+    opacity: 0.78,
+  },
+  classCardInner: {
+    padding: 16,
+  },
+
+  /* Card Header Row */
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    marginBottom: 10,
   },
-  subjectMetaWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  subjectCodePill: {
-    backgroundColor: APP_COLORS.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  subjectCodeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: APP_COLORS.primary,
-  },
-  timeWrap: {
+  timeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    backgroundColor: APP_COLORS.subSurface,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
-  timeText: {
+  timeBadgeLive: {
+    backgroundColor: '#FFF1ED',
+  },
+  timeBadgeText: {
     fontSize: 12,
-    color: APP_COLORS.textSecondary,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: APP_COLORS.text,
   },
-  orderPill: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+  timeBadgeTextLive: {
+    color: APP_COLORS.primaryWarm,
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFF1ED',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 9999,
   },
-  orderText: {
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APP_COLORS.primaryWarm,
+  },
+  livePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.primaryWarm,
+    letterSpacing: 0.3,
+  },
+  pastPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: APP_COLORS.subSurface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9999,
+  },
+  pastPillText: {
     fontSize: 11,
     fontWeight: '600',
     color: APP_COLORS.textMuted,
   },
-  cardBody: {
-    padding: 16,
+  periodText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textMuted,
   },
-  className: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: APP_COLORS.text,
-    marginBottom: 10,
-    lineHeight: 22,
+
+  /* Subject Block */
+  subjectBlock: {
+    marginBottom: 12,
   },
-  locationInstructorRow: {
+  codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    marginBottom: 4,
   },
-  infoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  courseCodePill: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
   },
-  infoBadgeText: {
-    fontSize: 12,
+  courseCodeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  syllabusTag: {
+    fontSize: 11,
     color: APP_COLORS.textSecondary,
     fontWeight: '500',
   },
-  liveActionFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: APP_COLORS.successSoft,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(16, 185, 129, 0.2)',
+  subjectName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: APP_COLORS.text,
+    lineHeight: 22,
   },
-  livePromptText: {
+  subjectNamePast: {
+    color: APP_COLORS.textSecondary,
+  },
+
+  /* Meta Row */
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.subSurface,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 1,
+  },
+  metaItemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+  },
+  metaDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: APP_COLORS.border,
+  },
+
+  /* Live Action Footer */
+  liveActionFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 94, 54, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  liveActionPrompt: {
     fontSize: 12,
     fontWeight: '700',
-    color: APP_COLORS.success,
+    color: APP_COLORS.primaryWarm,
+  },
+  liveActionSub: {
+    fontSize: 11,
+    color: APP_COLORS.textSecondary,
+    marginTop: 1,
   },
 });
 

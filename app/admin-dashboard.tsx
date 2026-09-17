@@ -3,14 +3,13 @@ import { AppScreen } from '@/components/app/AppScreen';
 import { Card } from '@/components/app/Card';
 import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
-import { MetricCard } from '@/components/app/MetricCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, APP_IDENTITY, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { adminService } from '@/services/adminService';
 import { authService } from '@/services/authService';
-import { useFocusEffect , useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -37,7 +36,7 @@ export default function AdminDashboard() {
   );
 
   const handleLogout = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out of Admin console?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of the Admin console?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out',
@@ -55,15 +54,17 @@ export default function AdminDashboard() {
   }
 
   const { reports } = overview;
-  const overallRate = reports.totalConducted > 0
-    ? Math.round((reports.totalPresent / reports.totalConducted) * 100)
-    : 0;
+  const overallRate =
+    reports.totalConducted > 0
+      ? Math.round((reports.totalPresent / reports.totalConducted) * 100)
+      : 0;
 
   return (
     <AppScreen scrollable>
+      {/* Top Admin Header */}
       <Header
         title="Admin Console"
-        subtitle="Prototype System Administration"
+        subtitle="System Oversight & Governance"
         rightAction={{
           icon: 'rectangle.portrait.and.arrow.right',
           onPress: handleLogout,
@@ -71,176 +72,388 @@ export default function AdminDashboard() {
         }}
       />
 
-      {/* System Banner */}
-      <Card style={styles.systemBanner}>
-        <View style={styles.bannerHeader}>
-          <View style={styles.bannerBadge}>
-            <IconSymbol size={20} name="building.columns.fill" color={APP_COLORS.warning} />
-          </View>
-          <View style={styles.bannerTextWrap}>
-            <Text style={styles.bannerTitle}>Attendance Portal Prototype</Text>
-            <Text style={styles.bannerSubtitle}>Independent Demo Prototype • Fictional Test Data</Text>
+      {/* Institutional Context & Attendance Overview Hero */}
+      <Card style={styles.systemHeroCard} padded={false}>
+        <View style={styles.heroHeader}>
+          <View style={styles.heroIdentityRow}>
+            <View style={styles.heroIconBox}>
+              <IconSymbol size={22} name="shield.lefthalf.filled" color={APP_COLORS.obsidian} />
+            </View>
+            <View style={styles.heroTextWrap}>
+              <View style={styles.universityBadge}>
+                <Text style={styles.universityBadgeText}>
+                  {APP_IDENTITY.name} • SYSTEM CONTROL
+                </Text>
+              </View>
+              <Text style={styles.heroTitle}>Institutional Attendance Overview</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.overallRateRow}>
-          <View>
-            <Text style={styles.rateLabel}>SYSTEM-WIDE ATTENDANCE RATE</Text>
-            <Text style={styles.rateValue}>{reports.totalConducted > 0 ? `${overallRate}%` : 'No Data'}</Text>
+        <View style={styles.rateDisplaySection}>
+          <View style={styles.ratePrimaryCol}>
+            <Text style={styles.rateCaption}>OVERALL TURNOUT RATE</Text>
+            <Text style={styles.rateBigValue}>
+              {reports.totalConducted > 0 ? `${overallRate}%` : 'N/A'}
+            </Text>
+            {reports.totalConducted > 0 ? (
+              <View style={styles.turnoutTrack}>
+                <View style={[styles.turnoutFill, { width: `${Math.min(100, overallRate)}%` }]} />
+              </View>
+            ) : null}
           </View>
-          <View style={styles.rateStats}>
-            <Text style={styles.rateSubText}>{reports.totalPresent} Present</Text>
-            <Text style={styles.rateSubText}>{reports.totalAbsent} Absent</Text>
-            <Text style={styles.rateSubText}>{reports.sessionsEnded} Classes</Text>
+
+          <View style={styles.rateStatsGrid}>
+            <View style={styles.rateStatItem}>
+              <Text style={[styles.rateStatValue, { color: APP_COLORS.safeText }]}>
+                {reports.totalPresent}
+              </Text>
+              <Text style={styles.rateStatLabel}>Present Logs</Text>
+            </View>
+            <View style={styles.rateStatItem}>
+              <Text style={[styles.rateStatValue, { color: APP_COLORS.shortageText }]}>
+                {reports.totalAbsent}
+              </Text>
+              <Text style={styles.rateStatLabel}>Absent Logs</Text>
+            </View>
+            <View style={styles.rateStatItem}>
+              <Text style={styles.rateStatValue}>{reports.sessionsEnded}</Text>
+              <Text style={styles.rateStatLabel}>Conducted</Text>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.heroFooterStatus}>
+          <View style={styles.statusDot} />
+          <Text style={styles.statusFooterText}>
+            Dibrugarh University BCA 1st Sem • Real-time database sync active
+          </Text>
         </View>
       </Card>
 
-      {/* Core Counts */}
-      <View style={styles.metricsRow}>
-        <MetricCard label="Students" value={overview.students} />
-        <View style={styles.metricSpacer} />
-        <MetricCard label="Faculty" value={overview.faculties} />
-        <View style={styles.metricSpacer} />
-        <MetricCard label="Subjects" value={overview.subjects} />
+      {/* Operational Metrics Grid (2x3 Compact Layout) */}
+      <View style={styles.metricsContainer}>
+        <View style={styles.metricGridRow}>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{overview.students}</Text>
+            <Text style={styles.metricTileLabel}>ENROLLED STUDENTS</Text>
+          </View>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{overview.faculties}</Text>
+            <Text style={styles.metricTileLabel}>ACTIVE FACULTY</Text>
+          </View>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{overview.subjects}</Text>
+            <Text style={styles.metricTileLabel}>CURRICULUM COURSES</Text>
+          </View>
+        </View>
+
+        <View style={styles.metricGridRow}>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{overview.programmes}</Text>
+            <Text style={styles.metricTileLabel}>PROGRAMMES</Text>
+          </View>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{overview.semesters}</Text>
+            <Text style={styles.metricTileLabel}>SEMESTERS</Text>
+          </View>
+          <View style={styles.metricTile}>
+            <Text style={styles.metricTileNumber}>{reports.sessionsEnded}</Text>
+            <Text style={styles.metricTileLabel}>CLASSES HELD</Text>
+          </View>
+        </View>
       </View>
 
-      <View style={styles.metricsRow}>
-        <MetricCard label="Programmes" value={overview.programmes} />
-        <View style={styles.metricSpacer} />
-        <MetricCard label="Semesters" value={overview.semesters} />
-        <View style={styles.metricSpacer} />
-        <MetricCard label="Conducted" value={reports.sessionsEnded} />
+      {/* Management Modules Section */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Management Modules</Text>
+        <Text style={styles.sectionSubtitle}>
+          Curriculum hierarchy, personnel rosters, and master audits
+        </Text>
       </View>
-
-      <Text style={styles.sectionTitle}>Management Modules</Text>
 
       <ActionTile
         icon="person.2.fill"
         title="Student Management"
-        subtitle={`Manage ${overview.students} student records & accounts`}
+        subtitle={`Manage ${overview.students} student accounts & academic status`}
         onPress={() => router.push('/admin-students' as never)}
       />
 
       <ActionTile
         icon="person.badge.plus"
         title="Faculty Management"
-        subtitle={`Manage ${overview.faculties} instructor accounts & profiles`}
+        subtitle={`Manage ${overview.faculties} instructor accounts & credentials`}
         onPress={() => router.push('/admin-faculty' as never)}
       />
 
       <ActionTile
         icon="book.fill"
         title="Academics & Subjects"
-        subtitle="Departments, Programmes, Semesters & Course catalogue"
+        subtitle={`Departments, Programmes, Semesters & ${overview.subjects} Courses`}
         onPress={() => router.push('/admin-academics' as never)}
       />
 
       <ActionTile
         icon="slider.horizontal.3"
-        title="Enrollments & Assignments"
-        subtitle="Manage student course enrolments & faculty assignments"
+        title="Enrolments & Assignments"
+        subtitle="Manage student course enrolments & faculty teaching assignments"
         onPress={() => router.push('/admin-enrollments' as never)}
       />
 
       <ActionTile
         icon="chart.bar.fill"
         title="Reports & Attendance Records"
-        subtitle="University reports & attendance record correction tools"
+        subtitle="Session logs, master audit CSV export & record corrections"
         onPress={() => router.push('/admin-reports' as never)}
       />
 
-      <ActionTile
-        icon="arrow.trianglehead.clockwise"
-        title="Development Tools & Reset"
-        subtitle="Test accounts, seed database & storage inspection"
+      {/* Developer Utilities Tile */}
+      <TouchableOpacity
+        style={styles.devToolsCard}
         onPress={() => router.push('/dev-tools' as never)}
-        variant="danger"
-        style={styles.devToolsTile}
-      />
+        activeOpacity={0.7}
+      >
+        <View style={styles.devToolsLeft}>
+          <View style={styles.devToolsIcon}>
+            <IconSymbol size={18} name="wrench.and.screwdriver" color={APP_COLORS.textSecondary} />
+          </View>
+          <View style={styles.devToolsTextWrap}>
+            <Text style={styles.devToolsTitle}>Development Tools & Data Reset</Text>
+            <Text style={styles.devToolsSubtitle}>
+              Seed database, test accounts, storage inspection & mock resets
+            </Text>
+          </View>
+        </View>
+        <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+      </TouchableOpacity>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  systemBanner: {
-    backgroundColor: APP_COLORS.surfaceVariant,
+  systemHeroCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    borderWidth: 1,
     borderColor: APP_COLORS.border,
-    marginBottom: 16,
+    marginBottom: TOKENS.spacing.md,
+    overflow: 'hidden',
+    ...TOKENS.shadows.subtle,
   },
-  bannerHeader: {
+  heroHeader: {
+    padding: TOKENS.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: APP_COLORS.borderSubtle,
+  },
+  heroIdentityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
   },
-  bannerBadge: {
+  heroIconBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: `${APP_COLORS.warning}20`,
+    backgroundColor: APP_COLORS.subSurface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(24, 25, 30, 0.1)',
   },
-  bannerTextWrap: {
+  heroTextWrap: {
     flex: 1,
   },
-  bannerTitle: {
+  universityBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: APP_COLORS.subSurface,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: TOKENS.rounded.full,
+    marginBottom: 4,
+  },
+  universityBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: APP_COLORS.obsidian,
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.3,
   },
-  bannerSubtitle: {
-    fontSize: 12,
+  rateDisplaySection: {
+    padding: TOKENS.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  ratePrimaryCol: {
+    flex: 1.2,
+  },
+  rateCaption: {
+    fontSize: 10,
+    fontWeight: '800',
     color: APP_COLORS.textSecondary,
-    marginTop: 2,
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
-  overallRateRow: {
+  rateBigValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: APP_COLORS.obsidian,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -1,
+  },
+  turnoutTrack: {
+    height: 4,
+    backgroundColor: APP_COLORS.subSurface,
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  turnoutFill: {
+    height: '100%',
+    backgroundColor: APP_COLORS.safeText,
+    borderRadius: 2,
+  },
+  rateStatsGrid: {
+    flex: 1.5,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    backgroundColor: APP_COLORS.surface,
-    padding: 14,
+    backgroundColor: APP_COLORS.surfaceVariant,
+    padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
   },
-  rateLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: APP_COLORS.textSecondary,
-    letterSpacing: 1,
+  rateStatItem: {
+    alignItems: 'center',
+    flex: 1,
   },
-  rateValue: {
-    fontSize: 28,
+  rateStatValue: {
+    fontSize: 15,
     fontWeight: '800',
-    color: APP_COLORS.warning,
+    color: APP_COLORS.text,
     fontVariant: ['tabular-nums'],
-    marginTop: 2,
   },
-  rateStats: {
-    alignItems: 'flex-end',
-  },
-  rateSubText: {
-    fontSize: 12,
+  rateStatLabel: {
+    fontSize: 10,
     color: APP_COLORS.textMuted,
+    marginTop: 2,
+    fontWeight: '600',
   },
-  metricsRow: {
+  heroFooterStatus: {
     flexDirection: 'row',
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: TOKENS.spacing.md,
+    paddingVertical: 8,
+    backgroundColor: APP_COLORS.subSurface,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.borderSubtle,
   },
-  metricSpacer: {
-    width: 10,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APP_COLORS.safeText,
   },
-  sectionTitle: {
+  statusFooterText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+    flex: 1,
+  },
+  metricsContainer: {
+    marginBottom: TOKENS.spacing.md,
+    gap: 8,
+  },
+  metricGridRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricTile: {
+    flex: 1,
+    backgroundColor: APP_COLORS.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  metricTileNumber: {
     fontSize: 18,
     fontWeight: '800',
     color: APP_COLORS.text,
-    marginTop: 16,
-    marginBottom: 12,
+    fontVariant: ['tabular-nums'],
+    marginBottom: 2,
   },
-  devToolsTile: {
+  metricTileLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    marginTop: TOKENS.spacing.xs,
+    marginBottom: TOKENS.spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: APP_COLORS.text,
+    letterSpacing: -0.3,
+  },
+  sectionSubtitle: {
+    ...TYPOGRAPHY.caption,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  devToolsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     marginTop: 8,
     marginBottom: 24,
+    ...TOKENS.shadows.subtle,
+  },
+  devToolsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  devToolsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: APP_COLORS.subSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  devToolsTextWrap: {
+    flex: 1,
+  },
+  devToolsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+  },
+  devToolsSubtitle: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+    marginTop: 2,
   },
 });

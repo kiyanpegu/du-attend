@@ -1,18 +1,49 @@
+import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
-import { AttendanceCard } from '@/components/app/AttendanceCard';
+import { Card } from '@/components/app/Card';
 import { EmptyState } from '@/components/app/EmptyState';
 import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
+import { StatusBadge } from '@/components/app/StatusBadge';
 import { StudentBottomNav } from '@/components/app/StudentBottomNav';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { subjectService } from '@/services/subjectService';
 import type { AttendanceHistoryItem, AttendanceSession, DateFilter, Subject } from '@/types/models';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+function formatSessionDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const isToday =
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear();
+
+    const timeStr = d.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    if (isToday) {
+      return `Today, ${timeStr}`;
+    }
+
+    const dateFormatted = d.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+    });
+    return `${dateFormatted} • ${timeStr}`;
+  } catch {
+    return dateStr;
+  }
+}
 
 export default function StudentHistoryScreen() {
   const router = useRouter();
@@ -26,27 +57,32 @@ export default function StudentHistoryScreen() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const user = await authService.getActiveUser();
+    try {
+      const user = await authService.getActiveUser();
 
-    if (!user || user.role !== 'student') {
-      router.replace('/student-login' as never);
-      return;
+      if (!user || user.role !== 'student') {
+        router.replace('/student-login' as never);
+        return;
+      }
+
+      const [allHistory, allSubjects, live] = await Promise.all([
+        attendanceService.getStudentHistory(user.id, {
+          subjectId: selectedSubjectId === 'all' ? undefined : selectedSubjectId,
+          status: selectedStatus,
+          date: selectedDate,
+        }),
+        subjectService.listSubjects(),
+        attendanceService.getActiveSessionsForStudent(user.id),
+      ]);
+
+      setHistory(allHistory);
+      setSubjects(allSubjects);
+      setActiveSessions(live);
+    } catch {
+      // safe fallback
+    } finally {
+      setLoading(false);
     }
-
-    const [allHistory, allSubjects, live] = await Promise.all([
-      attendanceService.getStudentHistory(user.id, {
-        subjectId: selectedSubjectId === 'all' ? undefined : selectedSubjectId,
-        status: selectedStatus,
-        date: selectedDate,
-      }),
-      subjectService.listSubjects(),
-      attendanceService.getActiveSessionsForStudent(user.id),
-    ]);
-
-    setHistory(allHistory);
-    setSubjects(allSubjects);
-    setActiveSessions(live);
-    setLoading(false);
   }, [router, selectedSubjectId, selectedStatus, selectedDate]);
 
   useFocusEffect(
@@ -62,130 +98,131 @@ export default function StudentHistoryScreen() {
   return (
     <View style={styles.screen}>
       <AppScreen scrollable contentContainerStyle={styles.scrollContent}>
-        <Header title="Session History" subtitle="Verification Records & Logs" showBack={false} />
+        <Header
+          title="Session History"
+          subtitle="Verified Lecture Timeline"
+          showBack={false}
+          rightAction={{
+            icon: 'arrow.clockwise',
+            onPress: loadData,
+            label: 'Refresh',
+          }}
+        />
 
-        {/* Quick Summary Bar */}
-        <View style={styles.summaryStatsCard}>
-          <View style={styles.summaryStatItem}>
-            <View style={styles.summaryStatIconWrap}>
-              <IconSymbol size={16} name="checkmark" color={APP_COLORS.success} />
-            </View>
-            <View>
-              <Text style={styles.summaryStatNumber}>{presentCount}</Text>
-              <Text style={styles.summaryStatLabel}>Present</Text>
-            </View>
+        {/* Quick Context Summary Bar */}
+        <View style={styles.summaryBar}>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryDot, { backgroundColor: APP_COLORS.safeText }]} />
+            <Text style={styles.summaryLabel}>Present</Text>
+            <Text style={[styles.summaryValue, { color: APP_COLORS.safeText }]}>{presentCount}</Text>
           </View>
-
           <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryStatItem}>
-            <View style={[styles.summaryStatIconWrap, { backgroundColor: `${APP_COLORS.danger}15` }]}>
-              <IconSymbol size={16} name="xmark" color={APP_COLORS.danger} />
-            </View>
-            <View>
-              <Text style={styles.summaryStatNumber}>{absentCount}</Text>
-              <Text style={styles.summaryStatLabel}>Absent</Text>
-            </View>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryDot, { backgroundColor: APP_COLORS.shortageText }]} />
+            <Text style={styles.summaryLabel}>Absent</Text>
+            <Text style={[styles.summaryValue, { color: APP_COLORS.shortageText }]}>{absentCount}</Text>
           </View>
-
           <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryStatItem}>
-            <View style={[styles.summaryStatIconWrap, { backgroundColor: `${APP_COLORS.primary}15` }]}>
-              <IconSymbol size={16} name="clock.arrow.circlepath" color={APP_COLORS.primary} />
-            </View>
-            <View>
-              <Text style={styles.summaryStatNumber}>{history.length}</Text>
-              <Text style={styles.summaryStatLabel}>Filtered</Text>
-            </View>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryDot, { backgroundColor: APP_COLORS.textMuted }]} />
+            <Text style={styles.summaryLabel}>Total Logged</Text>
+            <Text style={styles.summaryValue}>{history.length}</Text>
           </View>
         </View>
 
-        {/* Filter Section */}
-        <View style={styles.filterSection}>
-          {/* Status Filters */}
-          <Text style={styles.filterLabel}>STATUS FILTER</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-            {[
-              { id: 'all', label: 'All Statuses' },
-              { id: 'present', label: `Present (${presentCount})` },
-              { id: 'absent', label: `Absent (${absentCount})` },
-              { id: 'cancelled', label: `Cancelled (${cancelledCount})` },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.filterChip, selectedStatus === item.id && styles.filterChipActive]}
-                onPress={() => setSelectedStatus(item.id as never)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[styles.filterChipText, selectedStatus === item.id && styles.filterChipTextActive]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Filter Controls */}
+        <View style={styles.filterCard}>
+          {/* Status Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterTitle}>STATUS</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+              {[
+                { id: 'all', label: `All (${history.length})` },
+                { id: 'present', label: `Present (${presentCount})` },
+                { id: 'absent', label: `Absent (${absentCount})` },
+                ...(cancelledCount > 0 ? [{ id: 'cancelled', label: `Cancelled (${cancelledCount})` }] : []),
+              ].map((item) => {
+                const active = selectedStatus === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                    onPress={() => setSelectedStatus(item.id as never)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
 
-          {/* Subject Filters */}
-          <Text style={styles.filterLabel}>SUBJECT</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedSubjectId === 'all' && styles.filterChipActive]}
-              onPress={() => setSelectedSubjectId('all')}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[styles.filterChipText, selectedSubjectId === 'all' && styles.filterChipTextActive]}
-              >
-                All Subjects
-              </Text>
-            </TouchableOpacity>
-            {subjects.map((sub) => (
+          {/* Subject Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterTitle}>SUBJECT</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
               <TouchableOpacity
-                key={sub.id}
-                style={[styles.filterChip, selectedSubjectId === sub.id && styles.filterChipActive]}
-                onPress={() => setSelectedSubjectId(sub.id)}
+                style={[styles.filterChip, selectedSubjectId === 'all' && styles.filterChipActive]}
+                onPress={() => setSelectedSubjectId('all')}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[styles.filterChipText, selectedSubjectId === sub.id && styles.filterChipTextActive]}
-                >
-                  {sub.code}
+                <Text style={[styles.filterChipText, selectedSubjectId === 'all' && styles.filterChipTextActive]}>
+                  All Subjects
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+              {subjects.map((sub) => {
+                const active = selectedSubjectId === sub.id;
+                return (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                    onPress={() => setSelectedSubjectId(sub.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                      {sub.code}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
 
-          {/* Date Filters */}
-          <Text style={styles.filterLabel}>TIME RANGE</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-            {[
-              { id: 'all', label: 'All Time' },
-              { id: 'today', label: 'Today' },
-              { id: 'week', label: 'Past 7 Days' },
-              { id: 'month', label: 'Past 30 Days' },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.filterChip, selectedDate === item.id && styles.filterChipActive]}
-                onPress={() => setSelectedDate(item.id as DateFilter)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[styles.filterChipText, selectedDate === item.id && styles.filterChipTextActive]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Time Range Filter */}
+          <View style={styles.filterRowNoMargin}>
+            <Text style={styles.filterTitle}>TIME RANGE</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+              {[
+                { id: 'all', label: 'All Time' },
+                { id: 'today', label: 'Today' },
+                { id: 'week', label: 'Past 7 Days' },
+                { id: 'month', label: 'Past 30 Days' },
+              ].map((item) => {
+                const active = selectedDate === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                    onPress={() => setSelectedDate(item.id as DateFilter)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
 
-        {/* Summary Header */}
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryText}>
-            Showing {history.length} record{history.length === 1 ? '' : 's'}
+        {/* Timeline Records */}
+        <View style={styles.listHeaderRow}>
+          <Text style={styles.listHeaderTitle}>TIMELINE RECORDS</Text>
+          <Text style={styles.listHeaderCount}>
+            {history.length} {history.length === 1 ? 'session' : 'sessions'}
           </Text>
         </View>
 
@@ -194,13 +231,106 @@ export default function StudentHistoryScreen() {
         ) : history.length === 0 ? (
           <EmptyState
             icon="clock.arrow.circlepath"
-            title="No History Found"
-            message="No attendance sessions matched your selected filters."
+            title="No Attendance Records"
+            message="No attendance sessions matched your selected filter criteria."
+            action={
+              selectedStatus !== 'all' || selectedSubjectId !== 'all' || selectedDate !== 'all' ? (
+                <AppButton
+                  title="Reset Filters"
+                  size="small"
+                  variant="outline"
+                  onPress={() => {
+                    setSelectedStatus('all');
+                    setSelectedSubjectId('all');
+                    setSelectedDate('all');
+                  }}
+                />
+              ) : undefined
+            }
           />
         ) : (
-          history.map((item, idx) => (
-            <AttendanceCard key={`${item.sessionId}-${idx}`} item={item} />
-          ))
+          <View style={styles.timelineList}>
+            {history.map((item, idx) => {
+              const isPresent = item.status === 'present';
+              const isAbsent = item.status === 'absent';
+              const isCancelled = item.sessionStatus === 'cancelled' || item.status === 'cancelled';
+
+              return (
+                <View key={`${item.sessionId}-${idx}`} style={styles.timelineRow}>
+                  {/* Left Timeline Track */}
+                  <View style={styles.timelineTrack}>
+                    <View
+                      style={[
+                        styles.timelineNode,
+                        isPresent
+                          ? styles.timelineNodePresent
+                          : isAbsent
+                          ? styles.timelineNodeAbsent
+                          : styles.timelineNodeCancelled,
+                      ]}
+                    >
+                      <IconSymbol
+                        size={12}
+                        name={isPresent ? 'checkmark' : isAbsent ? 'xmark' : 'exclamationmark.triangle'}
+                        color={
+                          isPresent
+                            ? APP_COLORS.safeText
+                            : isAbsent
+                            ? APP_COLORS.shortageText
+                            : APP_COLORS.textMuted
+                        }
+                      />
+                    </View>
+                    {idx < history.length - 1 && <View style={styles.timelineLine} />}
+                  </View>
+
+                  {/* Right Record Card */}
+                  <Card style={styles.recordCard} padded>
+                    {/* Top Row: Course Code + Date + Status Badge */}
+                    <View style={styles.recordTopRow}>
+                      <View style={styles.recordCodePill}>
+                        <Text style={styles.recordCodeText}>{item.subjectCode}</Text>
+                      </View>
+                      <Text style={styles.recordDateText}>{formatSessionDate(item.date)}</Text>
+                      <StatusBadge
+                        status={isPresent ? 'present' : isAbsent ? 'critical' : 'warning'}
+                        label={isCancelled ? 'CANCELLED' : isPresent ? 'PRESENT' : 'ABSENT'}
+                        size="small"
+                      />
+                    </View>
+
+                    {/* Subject Name */}
+                    <Text style={styles.recordSubjectName} numberOfLines={2}>
+                      {item.subjectName}
+                    </Text>
+
+                    {/* Metadata Row: Faculty & Verification Method */}
+                    <View style={styles.recordMetaRow}>
+                      <View style={styles.recordMetaItem}>
+                        <IconSymbol size={13} name="person" color={APP_COLORS.textMuted} />
+                        <Text style={styles.recordMetaText}>{item.facultyName}</Text>
+                      </View>
+                      {!isCancelled && item.method !== 'none' && (
+                        <>
+                          <Text style={styles.recordMetaDot}>•</Text>
+                          <View style={styles.recordMetaItem}>
+                            <IconSymbol
+                              size={12}
+                              name={item.method === 'otp' ? 'key.fill' : 'pencil'}
+                              color={APP_COLORS.textMuted}
+                            />
+                            <Text style={styles.recordMetaText}>
+                              {item.method === 'otp' ? 'OTP Verified' : 'Faculty Marked'}
+                            </Text>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  </Card>
+                </View>
+              );
+            })}
+          </View>
         )}
       </AppScreen>
 
@@ -212,85 +342,101 @@ export default function StudentHistoryScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
+    backgroundColor: APP_COLORS.canvas,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 120,
   },
-  summaryStatsCard: {
+  summaryBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginBottom: 16,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: TOKENS.spacing.md,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  summaryStatItem: {
+  summaryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flex: 1,
     justifyContent: 'center',
   },
-  summaryStatIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: `${APP_COLORS.success}15`,
-    alignItems: 'center',
-    justifyContent: 'center',
+  summaryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  summaryStatNumber: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: APP_COLORS.text,
-  },
-  summaryStatLabel: {
-    fontSize: 11,
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '500',
     color: APP_COLORS.textSecondary,
-    fontWeight: '600',
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: APP_COLORS.text,
   },
   summaryDivider: {
     width: 1,
-    height: 28,
-    backgroundColor: APP_COLORS.border,
+    height: 20,
+    backgroundColor: APP_COLORS.borderSubtle,
   },
-  filterSection: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
+  filterCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    padding: TOKENS.spacing.md,
+    marginBottom: TOKENS.spacing.lg,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  filterLabel: {
-    fontSize: 11,
+  filterRow: {
+    marginBottom: 12,
+  },
+  filterRowNoMargin: {
+    marginBottom: 0,
+  },
+  filterTitle: {
+    fontSize: 10,
     fontWeight: '700',
-    color: APP_COLORS.textSecondary,
+    color: APP_COLORS.textMuted,
     letterSpacing: 0.8,
     marginBottom: 8,
-    marginTop: 4,
   },
-  chipScroll: {
+  filterScroll: {
     flexDirection: 'row',
-    marginBottom: 10,
+    gap: 8,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: APP_COLORS.surface,
-    marginRight: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: TOKENS.rounded.full,
+    backgroundColor: APP_COLORS.subSurface,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: 'transparent',
   },
   filterChipActive: {
-    backgroundColor: APP_COLORS.primary,
-    borderColor: APP_COLORS.primary,
+    backgroundColor: APP_COLORS.obsidian,
+    borderColor: APP_COLORS.obsidian,
+    shadowColor: '#18191E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterChipText: {
     fontSize: 12,
@@ -298,18 +444,122 @@ const styles = StyleSheet.create({
     color: APP_COLORS.textSecondary,
   },
   filterChipTextActive: {
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
-  summaryRow: {
+  listHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
     paddingHorizontal: 4,
   },
-  summaryText: {
-    fontSize: 13,
+  listHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.8,
+  },
+  listHeaderCount: {
+    fontSize: 12,
     fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+  },
+  timelineList: {
+    paddingTop: 4,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 12,
+  },
+  timelineTrack: {
+    width: 32,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  timelineNode: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    zIndex: 2,
+  },
+  timelineNodePresent: {
+    backgroundColor: APP_COLORS.safeBg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(23, 135, 84, 0.3)',
+  },
+  timelineNodeAbsent: {
+    backgroundColor: APP_COLORS.shortageBg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+  },
+  timelineNodeCancelled: {
+    backgroundColor: APP_COLORS.subSurface,
+    borderWidth: 1.5,
+    borderColor: APP_COLORS.borderSubtle,
+  },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: APP_COLORS.borderSubtle,
+    marginTop: 4,
+  },
+  recordCard: {
+    flex: 1,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.lg,
+  },
+  recordTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  recordCodePill: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: TOKENS.rounded.xs,
+  },
+  recordCodeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  recordDateText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: APP_COLORS.textSecondary,
+    flex: 1,
+    marginLeft: 8,
+  },
+  recordSubjectName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+    letterSpacing: -0.2,
+    marginBottom: 8,
+  },
+  recordMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recordMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  recordMetaText: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
+    fontWeight: '500',
+  },
+  recordMetaDot: {
+    fontSize: 12,
     color: APP_COLORS.textMuted,
   },
 });

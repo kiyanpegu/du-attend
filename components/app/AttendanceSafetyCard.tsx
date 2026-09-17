@@ -17,40 +17,40 @@ export function AttendanceSafetyCard({ attended, conducted, target = 75 }: Atten
     switch (advice.status) {
       case 'safe':
         return {
-          bgColor: `${APP_COLORS.success}12`,
-          borderColor: `${APP_COLORS.success}40`,
-          textColor: APP_COLORS.success,
-          badgeBg: `${APP_COLORS.success}25`,
+          bgColor: APP_COLORS.safeBg,
+          borderColor: 'transparent',
+          textColor: APP_COLORS.safeText,
+          badgeBg: APP_COLORS.safeBg,
           iconName: 'checkmark.shield.fill' as const,
           badgeLabel: 'ELIGIBLE (≥75%)',
-          accentColor: APP_COLORS.success,
+          accentColor: APP_COLORS.safeText,
         };
       case 'warning':
         return {
-          bgColor: `${APP_COLORS.warning}12`,
-          borderColor: `${APP_COLORS.warning}40`,
-          textColor: APP_COLORS.warning,
-          badgeBg: `${APP_COLORS.warning}25`,
+          bgColor: APP_COLORS.attentionBg,
+          borderColor: 'transparent',
+          textColor: APP_COLORS.attentionText,
+          badgeBg: APP_COLORS.attentionBg,
           iconName: 'exclamationmark.triangle.fill' as const,
           badgeLabel: 'ATTENTION (<75%)',
-          accentColor: APP_COLORS.warning,
+          accentColor: APP_COLORS.attentionText,
         };
       case 'critical':
         return {
-          bgColor: `${APP_COLORS.danger}12`,
-          borderColor: `${APP_COLORS.danger}40`,
-          textColor: APP_COLORS.danger,
-          badgeBg: `${APP_COLORS.danger}25`,
+          bgColor: APP_COLORS.shortageBg,
+          borderColor: 'transparent',
+          textColor: APP_COLORS.shortageText,
+          badgeBg: APP_COLORS.shortageBg,
           iconName: 'xmark.shield.fill' as const,
           badgeLabel: 'SHORTAGE RISK',
-          accentColor: APP_COLORS.danger,
+          accentColor: APP_COLORS.shortageText,
         };
       default:
         return {
-          bgColor: APP_COLORS.surfaceVariant,
-          borderColor: APP_COLORS.border,
+          bgColor: APP_COLORS.subSurface,
+          borderColor: 'transparent',
           textColor: APP_COLORS.textSecondary,
-          badgeBg: APP_COLORS.surface,
+          badgeBg: APP_COLORS.subSurface,
           iconName: 'circle.fill' as const,
           badgeLabel: 'NO DATA',
           accentColor: APP_COLORS.textSecondary,
@@ -61,11 +61,13 @@ export function AttendanceSafetyCard({ attended, conducted, target = 75 }: Atten
   const theme = getStatusTheme();
 
   return (
-    <Card style={[styles.card, { borderColor: theme.borderColor }]}>
+    <Card style={styles.card}>
       {/* Header with Title and Badge */}
       <View style={styles.header}>
         <View style={styles.titleGroup}>
-          <IconSymbol size={18} name={theme.iconName} color={theme.accentColor} />
+          <View style={[styles.iconCircle, { backgroundColor: theme.badgeBg }]}>
+            <IconSymbol size={15} name={theme.iconName} color={theme.accentColor} />
+          </View>
           <Text style={styles.title}>Exam Eligibility Status</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
@@ -77,7 +79,7 @@ export function AttendanceSafetyCard({ attended, conducted, target = 75 }: Atten
 
       {/* Advice Statement Banner */}
       <View style={[styles.messageBanner, { backgroundColor: theme.bgColor }]}>
-        <Text style={[styles.messageText, { color: APP_COLORS.text }]}>
+        <Text style={[styles.messageText, { color: theme.textColor }]}>
           {advice.message}
         </Text>
       </View>
@@ -116,7 +118,7 @@ export function AttendanceSafetyCard({ attended, conducted, target = 75 }: Atten
 
       {/* University Regulation Disclaimer Note */}
       <View style={styles.policyFooter}>
-        <IconSymbol size={12} name="circle.fill" color={APP_COLORS.textMuted} />
+        <IconSymbol size={12} name="info.circle.fill" color={APP_COLORS.textMuted} />
         <Text style={styles.policyText}>
           DU Regulation: Minimum 75% attendance mandatory for End-Sem Exam eligibility.
         </Text>
@@ -127,41 +129,54 @@ export function AttendanceSafetyCard({ attended, conducted, target = 75 }: Atten
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 0,
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
+  iconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 14,
     fontWeight: '700',
     color: APP_COLORS.text,
-    letterSpacing: 0.2,
+    letterSpacing: -0.2,
   },
   badge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 9999,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
   messageBanner: {
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 14,
   },
@@ -174,12 +189,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: APP_COLORS.subSurface,
+    borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
   },
   metricItem: {
     alignItems: 'center',
@@ -199,7 +212,7 @@ const styles = StyleSheet.create({
   },
   metricDivider: {
     width: 1,
-    height: 24,
+    height: 22,
     backgroundColor: APP_COLORS.border,
   },
   policyFooter: {
@@ -207,9 +220,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
+    paddingTop: 4,
   },
   policyText: {
     fontSize: 11,

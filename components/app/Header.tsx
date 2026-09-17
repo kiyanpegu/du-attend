@@ -1,8 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ViewStyle, StyleProp } from 'react-native';
-import { useRouter } from 'expo-router';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { APP_COLORS } from '@/constants/duAttend';
+import { useRouter } from 'expo-router';
+import { StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 interface HeaderProps {
   title: string;
@@ -63,8 +62,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    marginBottom: 8,
+    paddingVertical: 12,
+    marginBottom: 10,
   },
   left: {
     flexDirection: 'row',
@@ -72,39 +71,51 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
-    marginRight: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: APP_COLORS.surfaceVariant,
+    marginRight: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: APP_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
   },
   textWrap: {
     flex: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
+    letterSpacing: -0.4,
     color: APP_COLORS.text,
   },
   subtitle: {
     fontSize: 13,
     color: APP_COLORS.textSecondary,
     marginTop: 2,
+    fontWeight: '500',
   },
   rightButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: 9999,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   rightActionLabel: {
     fontSize: 13,

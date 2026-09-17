@@ -1,7 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { APP_COLORS } from '@/constants/duAttend';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 interface OTPDisplayProps {
   otp: string;
@@ -42,9 +41,10 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 32,
     backgroundColor: APP_COLORS.surface,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: APP_COLORS.primary,
+    borderRadius: TOKENS.rounded.card,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 94, 54, 0.3)',
+    ...TOKENS.shadows.subtle,
   },
   label: {
     fontSize: 12,

@@ -40,7 +40,7 @@ export function StudentBottomNav({ currentTab, hasActiveClass = false }: Student
       <View style={styles.navRow}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.tab === currentTab;
-          const color = isActive ? APP_COLORS.primary : APP_COLORS.textSecondary;
+          const color = isActive ? APP_COLORS.obsidian : APP_COLORS.textMuted;
 
           return (
             <TouchableOpacity
@@ -73,13 +73,18 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: APP_COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
+    borderTopColor: APP_COLORS.borderSubtle,
     paddingTop: 10,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     zIndex: 100,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 8,
   },
   navRow: {
     flexDirection: 'row',
@@ -95,24 +100,24 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   iconWrapper: {
-    width: 38,
+    width: 42,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 15,
     position: 'relative',
   },
   iconWrapperActive: {
-    backgroundColor: APP_COLORS.primarySoft,
+    backgroundColor: APP_COLORS.subSurface,
   },
   liveBadgeDot: {
     position: 'absolute',
     top: 2,
-    right: 6,
+    right: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: APP_COLORS.success,
+    backgroundColor: APP_COLORS.primaryWarm,
   },
   navText: {
     fontSize: 11,
@@ -122,6 +127,7 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     fontWeight: '700',
+    color: APP_COLORS.obsidian,
   },
 });
 

@@ -1,23 +1,20 @@
 import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
-import { Card } from '@/components/app/Card';
-import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
-import { OTPDisplay } from '@/components/app/OTPDisplay';
-import { ProgressBar } from '@/components/app/ProgressBar';
-import { StudentRow } from '@/components/app/StudentRow';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, GEOFENCE_CONFIG, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { cloudService } from '@/services/cloudService';
 import type { FacultySessionReport } from '@/types/models';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     StyleSheet,
     Text,
+    TextInput,
+    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -28,6 +25,8 @@ export default function FacultyActiveClassScreen() {
   const [loading, setLoading] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'unmarked' | 'absent'>('all');
 
   const loadSession = useCallback(async () => {
     const user = await authService.getActiveUser();
@@ -206,19 +205,60 @@ export default function FacultyActiveClassScreen() {
     );
   };
 
+  // Filter and search roster
+  const filteredRoster = useMemo(() => {
+    if (!report) return [];
+
+    return report.roster.filter((item) => {
+      // Status filter
+      const itemStatus = item.record?.status || 'unmarked';
+      if (statusFilter === 'present' && itemStatus !== 'present') return false;
+      if (statusFilter === 'absent' && itemStatus !== 'absent') return false;
+      if (statusFilter === 'unmarked' && itemStatus !== 'unmarked') return false;
+
+      // Query filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesName = item.user.name.toLowerCase().includes(query);
+        const matchesId = item.student.studentId.toLowerCase().includes(query);
+        return matchesName || matchesId;
+      }
+
+      return true;
+    });
+  }, [report, statusFilter, searchQuery]);
+
   if (loading) {
-    return <LoadingState message="Loading live attendance session..." />;
+    return <LoadingState message="Loading live attendance command center..." />;
   }
 
   if (!report) {
     return (
       <AppScreen>
-        <Header title="Active Class" subtitle="Session Management" showBack />
-        <Card style={styles.noActiveCard}>
-          <IconSymbol size={48} name="tray" color={APP_COLORS.textMuted} />
+        {/* Top bar back */}
+        <View style={styles.topNav}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.replace('/faculty-dashboard' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Dashboard"
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={20} name="chevron.left" color={APP_COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.navTitles}>
+            <Text style={styles.navTitle}>Active Class</Text>
+            <Text style={styles.navSubtitle}>Session Command Center</Text>
+          </View>
+        </View>
+
+        <View style={styles.noActiveCard}>
+          <View style={styles.noActiveIconCircle}>
+            <IconSymbol size={36} name="tray" color={APP_COLORS.textMuted} />
+          </View>
           <Text style={styles.noActiveTitle}>No Active Class Session</Text>
           <Text style={styles.noActiveDesc}>
-            You do not currently have any live attendance class running.
+            You do not currently have any live attendance class running. Select a course to launch an OTP.
           </Text>
           <AppButton
             title="Start a Class"
@@ -226,222 +266,995 @@ export default function FacultyActiveClassScreen() {
             variant="primary"
             style={styles.startClassBtn}
           />
-        </Card>
+        </View>
       </AppScreen>
     );
   }
 
   const isExpired = secondsLeft <= 0;
+  const isUrgent = !isExpired && secondsLeft <= 15;
+  const turnoutPercent = report.enrolledCount > 0
+    ? Math.round((report.presentCount / report.enrolledCount) * 100)
+    : 0;
+
+  // Format OTP as 3-digit clusters (e.g. "482 — 716")
+  const rawOtp = report.session.otp || '000000';
+  const otpPart1 = rawOtp.slice(0, 3);
+  const otpPart2 = rawOtp.slice(3, 6);
+
+  const formattedStartTime = new Date(report.session.startedAt).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <AppScreen scrollable>
-      <Header
-        title={report.subject.name}
-        subtitle={`${report.subject.code} • Started at ${new Date(report.session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-        showBack
-        onBack={() => router.replace('/faculty-dashboard' as never)}
-      />
-
-      {/* OTP Display Block */}
-      <View style={styles.otpSection}>
-        <OTPDisplay
-          otp={report.session.otp}
-          secondsRemaining={secondsLeft}
-          expired={isExpired}
-        />
-
-        <View style={styles.otpActions}>
-          <AppButton
-            title={isExpired ? 'Generate New OTP (60s)' : 'Regenerate OTP'}
-            onPress={handleRegenerateOtp}
-            loading={actionLoading}
-            variant={isExpired ? 'primary' : 'outline'}
-            size="medium"
-            style={styles.regenerateBtn}
-          />
-        </View>
-      </View>
-
-      {/* Live Statistics Cards */}
-      <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>Live Statistics</Text>
-
-        <View style={styles.statRow}>
-          <View style={styles.statTextRow}>
-            <Text style={styles.statRowLabel}>Present</Text>
-            <Text style={styles.statRowValue}>{report.presentCount}</Text>
+      {/* Top Command Bar */}
+      <View style={styles.topNav}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.replace('/faculty-dashboard' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Dashboard"
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={20} name="chevron.left" color={APP_COLORS.text} />
+        </TouchableOpacity>
+        <View style={styles.navTitles}>
+          <View style={styles.liveBadgeRow}>
+            <View style={styles.liveIndicatorDot} />
+            <Text style={styles.liveIndicatorText}>LIVE COMMAND CENTER</Text>
           </View>
-          <ProgressBar 
-            progress={report.enrolledCount > 0 ? (report.presentCount / report.enrolledCount) * 100 : 0} 
-            standing="good" 
-            height={8} 
-          />
-        </View>
-
-        <View style={styles.statRow}>
-          <View style={styles.statTextRow}>
-            <Text style={styles.statRowLabel}>Absent</Text>
-            <Text style={styles.statRowValue}>{report.absentCount}</Text>
-          </View>
-          <ProgressBar 
-            progress={report.enrolledCount > 0 ? (report.absentCount / report.enrolledCount) * 100 : 0} 
-            standing="critical" 
-            height={8} 
-          />
-        </View>
-
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Students</Text>
-          <Text style={styles.totalValue}>{report.enrolledCount}</Text>
-        </View>
-      </View>
-
-      {/* Roster & Manual Attendance Section */}
-      <View style={styles.rosterSectionHeader}>
-        <View>
-          <Text style={styles.rosterTitle}>STUDENT ATTENDANCE ROSTER</Text>
-          <Text style={styles.rosterSubtitle}>
-            Live OTP submissions & manual attendance controls
+          <Text style={styles.navTitle} numberOfLines={1}>
+            {report.subject.name}
           </Text>
         </View>
       </View>
 
-      {report.roster.map((studentStatus, index) => (
-        <StudentRow
-          key={studentStatus.student.id}
-          index={index}
-          studentStatus={studentStatus}
-          showActions={true}
-          onMarkPresent={() => handleMarkManual(studentStatus.student.id, 'present')}
-          onMarkAbsent={() => handleMarkManual(studentStatus.student.id, 'absent')}
-        />
-      ))}
+      {/* Session Metadata Context Card */}
+      <View style={styles.contextCard}>
+        <View style={styles.contextRow}>
+          <View style={styles.codePill}>
+            <Text style={styles.codePillText}>{report.subject.code}</Text>
+          </View>
+          <View style={styles.contextItem}>
+            <IconSymbol size={13} name="mappin.and.ellipse" color={APP_COLORS.textSecondary} />
+            <Text style={styles.contextItemText}>{GEOFENCE_CONFIG.classroomName}</Text>
+          </View>
+          <View style={styles.contextItem}>
+            <IconSymbol size={13} name="clock.fill" color={APP_COLORS.textSecondary} />
+            <Text style={styles.contextItemText}>Started {formattedStartTime}</Text>
+          </View>
+        </View>
 
-      {/* Control Actions: End Class & Cancel Class */}
-      <View style={styles.classControls}>
+        <View style={styles.syncRow}>
+          <View style={styles.syncDot} />
+          <Text style={styles.syncText}>Realtime sync active (2s auto-refresh)</Text>
+        </View>
+      </View>
+
+      {/* Podium-Grade Tactile OTP Broadcast Display */}
+      <View style={[
+        styles.otpCard,
+        isExpired && styles.otpCardExpired,
+        isUrgent && styles.otpCardUrgent,
+      ]}>
+        <View style={styles.otpHeader}>
+          <View style={styles.otpHeaderLeft}>
+            <IconSymbol
+              size={16}
+              name="broadcast.tower"
+              color={isExpired ? APP_COLORS.danger : isUrgent ? APP_COLORS.warning : APP_COLORS.primaryWarm}
+            />
+            <Text style={styles.otpHeaderLabel}>BROADCAST VERIFICATION CODE</Text>
+          </View>
+          <View style={[
+            styles.statusPill,
+            isExpired ? styles.statusPillExpired : isUrgent ? styles.statusPillUrgent : styles.statusPillActive,
+          ]}>
+            <Text style={[
+              styles.statusPillText,
+              isExpired ? styles.statusTextExpired : isUrgent ? styles.statusTextUrgent : styles.statusTextActive,
+            ]}>
+              {isExpired ? 'EXPIRED' : isUrgent ? 'ROTATING SOON' : '60S ROTATION'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Big Tabular OTP Digits Display */}
+        <View style={styles.otpDisplayArea}>
+          {isExpired ? (
+            <View style={styles.expiredArea}>
+              <IconSymbol size={32} name="lock.slash.fill" color={APP_COLORS.danger} />
+              <Text style={styles.expiredMainText}>OTP EXPIRED</Text>
+              <Text style={styles.expiredSubText}>Tap rotate below to issue a fresh 60s code</Text>
+            </View>
+          ) : (
+            <View style={styles.digitsRow}>
+              <View style={styles.digitCluster}>
+                <Text style={styles.digitText}>{otpPart1}</Text>
+              </View>
+              <View style={styles.digitDivider}>
+                <Text style={styles.dividerDash}>—</Text>
+              </View>
+              <View style={styles.digitCluster}>
+                <Text style={styles.digitText}>{otpPart2}</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Horizontal Countdown Meter */}
+        {!isExpired && (
+          <View style={styles.meterContainer}>
+            <View style={styles.meterTrack}>
+              <View
+                style={[
+                  styles.meterFill,
+                  { width: `${Math.max(0, Math.min(100, (secondsLeft / 60) * 100))}%` },
+                  isUrgent && styles.meterFillUrgent,
+                ]}
+              />
+            </View>
+            <View style={styles.meterLabelRow}>
+              <Text style={styles.meterHelpText}>Project or share with present students</Text>
+              <View style={styles.timerBadge}>
+                <IconSymbol
+                  size={12}
+                  name="timer"
+                  color={isUrgent ? APP_COLORS.warning : APP_COLORS.textSecondary}
+                />
+                <Text style={[styles.timerSecText, isUrgent && styles.timerSecUrgent]}>
+                  {secondsLeft}s remaining
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Rotate / Regenerate CTA */}
+        <View style={styles.otpActionRow}>
+          <AppButton
+            title={isExpired ? 'Generate New OTP (60s)' : 'Rotate Code (New OTP)'}
+            onPress={handleRegenerateOtp}
+            loading={actionLoading}
+            variant={isExpired ? 'primary' : 'outline'}
+            size="medium"
+            style={styles.rotateBtn}
+          />
+        </View>
+      </View>
+
+      {/* Operational Metrics Cluster */}
+      <View style={styles.metricsCluster}>
+        <View style={styles.metricTile}>
+          <Text style={styles.metricLabel}>TURNOUT</Text>
+          <Text style={styles.metricValue}>{turnoutPercent}%</Text>
+          <Text style={styles.metricSub}>{report.presentCount} of {report.enrolledCount}</Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.metricTile}>
+          <Text style={[styles.metricLabel, { color: APP_COLORS.success }]}>PRESENT</Text>
+          <Text style={[styles.metricValue, { color: APP_COLORS.success }]}>{report.presentCount}</Text>
+          <Text style={styles.metricSub}>Recorded</Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.metricTile}>
+          <Text style={[styles.metricLabel, { color: APP_COLORS.textSecondary }]}>PENDING</Text>
+          <Text style={[styles.metricValue, { color: APP_COLORS.textSecondary }]}>{report.unmarkedCount}</Text>
+          <Text style={styles.metricSub}>Unmarked</Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.metricTile}>
+          <Text style={[styles.metricLabel, { color: APP_COLORS.danger }]}>ABSENT</Text>
+          <Text style={[styles.metricValue, { color: APP_COLORS.danger }]}>{report.absentCount}</Text>
+          <Text style={styles.metricSub}>Explicit</Text>
+        </View>
+      </View>
+
+      {/* Segmented Turnout Visual Bar */}
+      <View style={styles.segmentedBar}>
+        <View
+          style={[
+            styles.segmentPresent,
+            { flex: Math.max(0.001, report.presentCount) },
+          ]}
+        />
+        <View
+          style={[
+            styles.segmentAbsent,
+            { flex: Math.max(0.001, report.absentCount) },
+          ]}
+        />
+        <View
+          style={[
+            styles.segmentUnmarked,
+            { flex: Math.max(0.001, report.unmarkedCount) },
+          ]}
+        />
+      </View>
+
+      {/* Student Roster Section Header */}
+      <View style={styles.rosterSectionHeader}>
+        <View style={styles.rosterTitleBox}>
+          <Text style={styles.rosterTitle}>STUDENT ATTENDANCE ROSTER</Text>
+          <Text style={styles.rosterSubtitle}>
+            Live OTP check-ins & instant manual overrides ({filteredRoster.length} of {report.roster.length})
+          </Text>
+        </View>
+      </View>
+
+      {/* Search & Status Filter Controls */}
+      <View style={styles.filterToolbar}>
+        {/* Search input */}
+        <View style={styles.searchBox}>
+          <IconSymbol size={16} name="magnifyingglass" color={APP_COLORS.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search student by name or ID..."
+            placeholderTextColor={APP_COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+        </View>
+
+        {/* Filter Pills */}
+        <View style={styles.filterPillsRow}>
+          {(
+            [
+              { key: 'all', label: `All (${report.roster.length})` },
+              { key: 'present', label: `Present (${report.presentCount})` },
+              { key: 'unmarked', label: `Pending (${report.unmarkedCount})` },
+              { key: 'absent', label: `Absent (${report.absentCount})` },
+            ] as const
+          ).map((filter) => {
+            const isSelected = statusFilter === filter.key;
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                style={[styles.filterChip, isSelected && styles.filterChipSelected]}
+                onPress={() => setStatusFilter(filter.key)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    isSelected && styles.filterChipTextSelected,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Roster Table / List */}
+      <View style={styles.rosterList}>
+        {filteredRoster.length === 0 ? (
+          <View style={styles.rosterEmpty}>
+            <Text style={styles.rosterEmptyText}>No students match this filter.</Text>
+          </View>
+        ) : (
+          filteredRoster.map((item, index) => {
+            const status = item.record?.status || 'unmarked';
+            const isPresent = status === 'present';
+            const isAbsent = status === 'absent';
+            const isUnmarked = status === 'unmarked';
+            const isEven = index % 2 === 0;
+
+            return (
+              <View
+                key={item.student.id}
+                style={[styles.studentCard, isEven && styles.studentCardEven]}
+              >
+                {/* Student Info */}
+                <View style={styles.studentInfo}>
+                  <View style={styles.studentHeaderRow}>
+                    <View style={styles.rollBadge}>
+                      <Text style={styles.rollBadgeText}>{item.student.studentId}</Text>
+                    </View>
+                    {item.record?.markedBy && (
+                      <View style={[
+                        styles.methodBadge,
+                        item.record.markedBy === 'otp' ? styles.methodOtp : styles.methodManual,
+                      ]}>
+                        <Text style={[
+                          styles.methodBadgeText,
+                          item.record.markedBy === 'otp' ? styles.methodOtpText : styles.methodManualText,
+                        ]}>
+                          {item.record.markedBy === 'otp' ? 'OTP VERIFIED' : 'MANUAL OVERRIDE'}
+                        </Text>
+                      </View>
+                    )}
+                    {isUnmarked && (
+                      <View style={styles.methodPending}>
+                        <Text style={styles.methodPendingText}>PENDING</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.studentName} numberOfLines={1}>
+                    {item.user.name}
+                  </Text>
+                </View>
+
+                {/* Manual 1-Tap Toggle Action Buttons */}
+                <View style={styles.rosterActionGroup}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionToggleBtn,
+                      styles.presentToggleBtn,
+                      isPresent && styles.presentToggleActive,
+                    ]}
+                    onPress={() => handleMarkManual(item.student.id, 'present')}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Mark ${item.user.name} Present`}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol
+                      size={14}
+                      name="checkmark"
+                      color={isPresent ? '#FFFFFF' : APP_COLORS.success}
+                    />
+                    <Text
+                      style={[
+                        styles.actionToggleText,
+                        styles.presentToggleText,
+                        isPresent && styles.activeToggleText,
+                      ]}
+                    >
+                      Present
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionToggleBtn,
+                      styles.absentToggleBtn,
+                      isAbsent && styles.absentToggleActive,
+                    ]}
+                    onPress={() => handleMarkManual(item.student.id, 'absent')}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Mark ${item.user.name} Absent`}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol
+                      size={14}
+                      name="xmark"
+                      color={isAbsent ? '#FFFFFF' : APP_COLORS.danger}
+                    />
+                    <Text
+                      style={[
+                        styles.actionToggleText,
+                        styles.absentToggleText,
+                        isAbsent && styles.activeToggleText,
+                      ]}
+                    >
+                      Absent
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
+
+      {/* Session Finalization Section */}
+      <View style={styles.finalizationSection}>
+        <View style={styles.finalizationHeader}>
+          <Text style={styles.finalizationTitle}>SESSION FINALIZATION</Text>
+          <Text style={styles.finalizationNote}>
+            Ending the class invalidates the OTP and records all unmarked students as Absent.
+          </Text>
+        </View>
+
         <AppButton
           title="End Class & Finalize Attendance"
           onPress={handleEndClass}
           loading={actionLoading}
           variant="primary"
+          size="large"
           style={styles.endClassBtn}
         />
 
-        <AppButton
-          title="Cancel Class"
+        <TouchableOpacity
+          style={styles.cancelSessionBtn}
           onPress={handleCancelClass}
-          loading={actionLoading}
-          variant="danger"
-          style={styles.cancelClassBtn}
-        />
+          disabled={actionLoading}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={15} name="trash.fill" color={APP_COLORS.danger} />
+          <Text style={styles.cancelSessionText}>Cancel Session (Discard Without Saving)</Text>
+        </TouchableOpacity>
       </View>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  otpSection: {
-    marginBottom: 16,
-  },
-  otpActions: {
-    marginTop: 10,
+  topNav: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    marginBottom: TOKENS.spacing.md,
+    paddingTop: TOKENS.spacing.xs,
   },
-  regenerateBtn: {
-    width: '100%',
-  },
-  statsCard: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: APP_COLORS.surface,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...TOKENS.shadows.subtle,
   },
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: APP_COLORS.text,
-    marginBottom: 16,
+  navTitles: {
+    flex: 1,
   },
-  statRow: {
-    marginBottom: 16,
-  },
-  statTextRow: {
+  liveBadgeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
   },
-  statRowLabel: {
-    fontSize: 14,
-    color: APP_COLORS.textSecondary,
-    fontWeight: '500',
+  liveIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: APP_COLORS.success,
   },
-  statRowValue: {
-    fontSize: 16,
-    fontWeight: '700',
+  liveIndicatorText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.success,
+    letterSpacing: 1.1,
+  },
+  navTitle: {
+    fontSize: 20,
+    fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.4,
   },
-  totalRow: {
+  navSubtitle: {
+    ...TYPOGRAPHY.caption,
+    marginTop: 2,
+  },
+  contextCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.md,
+    paddingHorizontal: TOKENS.spacing.base,
+    paddingVertical: 10,
+    marginBottom: TOKENS.spacing.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  contextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 6,
+  },
+  codePill: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: TOKENS.rounded.full,
+    borderWidth: 1,
+    borderColor: 'rgba(224, 90, 71, 0.2)',
+  },
+  codePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  contextItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  contextItemText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: APP_COLORS.textSecondary,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.borderSubtle,
+  },
+  syncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APP_COLORS.safeText,
+  },
+  syncText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: APP_COLORS.textMuted,
+  },
+  otpCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    padding: TOKENS.spacing.lg,
+    marginBottom: TOKENS.spacing.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 94, 54, 0.4)',
+    ...TOKENS.shadows.subtle,
+  },
+  otpCardExpired: {
+    borderColor: APP_COLORS.danger,
+    backgroundColor: '#FFFBFB',
+  },
+  otpCardUrgent: {
+    borderColor: APP_COLORS.warning,
+    backgroundColor: '#FFFDF9',
+  },
+  otpHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
-    paddingTop: 16,
-    marginTop: 8,
+    marginBottom: 16,
   },
-  totalLabel: {
-    fontSize: 14,
-    color: APP_COLORS.textMuted,
-    fontWeight: '500',
+  otpHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  totalValue: {
-    fontSize: 20,
+  otpHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: APP_COLORS.textSecondary,
+    letterSpacing: 1.1,
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: TOKENS.rounded.full,
+  },
+  statusPillActive: {
+    backgroundColor: APP_COLORS.categoryBg,
+  },
+  statusPillUrgent: {
+    backgroundColor: APP_COLORS.attentionBg,
+  },
+  statusPillExpired: {
+    backgroundColor: APP_COLORS.shortageBg,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  statusTextActive: {
+    color: APP_COLORS.categoryText,
+  },
+  statusTextUrgent: {
+    color: APP_COLORS.warning,
+  },
+  statusTextExpired: {
+    color: APP_COLORS.danger,
+  },
+  otpDisplayArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  digitsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  digitCluster: {
+    backgroundColor: APP_COLORS.canvas,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  digitText: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: APP_COLORS.obsidian,
+    letterSpacing: 8,
+    fontVariant: ['tabular-nums'],
+  },
+  digitDivider: {
+    paddingHorizontal: 2,
+  },
+  dividerDash: {
+    fontSize: 28,
     fontWeight: '700',
+    color: APP_COLORS.textMuted,
+  },
+  expiredArea: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  expiredMainText: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: APP_COLORS.danger,
+    letterSpacing: 2,
+    marginTop: 6,
+  },
+  expiredSubText: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    marginTop: 4,
+  },
+  meterContainer: {
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  meterTrack: {
+    height: 6,
+    backgroundColor: APP_COLORS.subSurface,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: '100%',
+    backgroundColor: APP_COLORS.primaryWarm,
+    borderRadius: 3,
+  },
+  meterFillUrgent: {
+    backgroundColor: APP_COLORS.warning,
+  },
+  meterLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  meterHelpText: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+  },
+  timerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timerSecText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
+  timerSecUrgent: {
+    color: APP_COLORS.warning,
+  },
+  otpActionRow: {
+    marginTop: 4,
+  },
+  rotateBtn: {
+    width: '100%',
+  },
+  metricsCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  metricTile: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: APP_COLORS.textMuted,
+    marginBottom: 2,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '800',
     color: APP_COLORS.text,
+    fontVariant: ['tabular-nums'],
+  },
+  metricSub: {
+    fontSize: 10,
+    color: APP_COLORS.textMuted,
+    marginTop: 1,
+  },
+  metricDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: APP_COLORS.border,
+  },
+  segmentedBar: {
+    flexDirection: 'row',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: TOKENS.spacing.lg,
+    backgroundColor: APP_COLORS.subSurface,
+  },
+  segmentPresent: {
+    backgroundColor: APP_COLORS.success,
+  },
+  segmentAbsent: {
+    backgroundColor: APP_COLORS.danger,
+  },
+  segmentUnmarked: {
+    backgroundColor: APP_COLORS.subSurface,
   },
   rosterSectionHeader: {
-    marginBottom: 12,
+    marginBottom: TOKENS.spacing.sm,
+  },
+  rosterTitleBox: {
+    gap: 2,
   },
   rosterTitle: {
     fontSize: 12,
     fontWeight: '800',
     color: APP_COLORS.textSecondary,
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
   },
   rosterSubtitle: {
     fontSize: 12,
     color: APP_COLORS.textMuted,
-    marginTop: 2,
   },
-  classControls: {
-    marginTop: 20,
-    marginBottom: 30,
+  filterToolbar: {
+    gap: 10,
+    marginBottom: TOKENS.spacing.md,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: APP_COLORS.text,
+    paddingVertical: 0,
+  },
+  filterPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: TOKENS.rounded.full,
+    backgroundColor: APP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  filterChipSelected: {
+    backgroundColor: APP_COLORS.obsidian,
+    borderColor: APP_COLORS.obsidian,
+  },
+  filterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+  },
+  filterChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  rosterList: {
+    gap: 8,
+    marginBottom: TOKENS.spacing.xl,
+  },
+  rosterEmpty: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  rosterEmptyText: {
+    fontSize: 13,
+    color: APP_COLORS.textMuted,
+  },
+  studentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  studentCardEven: {
+    backgroundColor: '#FAFBFC',
+  },
+  studentInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  studentHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  rollBadge: {
+    backgroundColor: APP_COLORS.canvas,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  rollBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+    fontVariant: ['tabular-nums'],
+  },
+  methodBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  methodOtp: {
+    backgroundColor: APP_COLORS.safeBg,
+  },
+  methodManual: {
+    backgroundColor: APP_COLORS.subSurface,
+  },
+  methodBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  methodOtpText: {
+    color: APP_COLORS.success,
+  },
+  methodManualText: {
+    color: APP_COLORS.textSecondary,
+  },
+  methodPending: {
+    backgroundColor: APP_COLORS.subSurface,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  methodPendingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.5,
+  },
+  studentName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: APP_COLORS.text,
+  },
+  rosterActionGroup: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  presentToggleBtn: {
+    backgroundColor: APP_COLORS.safeBg,
+    borderColor: 'rgba(23, 135, 84, 0.3)',
+  },
+  presentToggleActive: {
+    backgroundColor: APP_COLORS.success,
+    borderColor: APP_COLORS.success,
+  },
+  absentToggleBtn: {
+    backgroundColor: APP_COLORS.shortageBg,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+  },
+  absentToggleActive: {
+    backgroundColor: APP_COLORS.danger,
+    borderColor: APP_COLORS.danger,
+  },
+  actionToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  presentToggleText: {
+    color: APP_COLORS.success,
+  },
+  absentToggleText: {
+    color: APP_COLORS.danger,
+  },
+  activeToggleText: {
+    color: '#FFFFFF',
+  },
+  finalizationSection: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    padding: TOKENS.spacing.base,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    marginBottom: TOKENS.spacing.xxxl,
     gap: 12,
+    ...TOKENS.shadows.subtle,
+  },
+  finalizationHeader: {
+    gap: 2,
+  },
+  finalizationTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: APP_COLORS.textSecondary,
+    letterSpacing: 1.1,
+  },
+  finalizationNote: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
+    lineHeight: 16,
   },
   endClassBtn: {
     width: '100%',
   },
-  cancelClassBtn: {
-    width: '100%',
+  cancelSessionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  cancelSessionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.danger,
   },
   noActiveCard: {
     alignItems: 'center',
     padding: 32,
     marginTop: 20,
-    backgroundColor: APP_COLORS.surfaceVariant,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  noActiveIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: APP_COLORS.subSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   noActiveTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: APP_COLORS.text,
-    marginTop: 12,
     marginBottom: 6,
   },
   noActiveDesc: {

@@ -7,11 +7,11 @@ import { Header } from '@/components/app/Header';
 import { LoadingState } from '@/components/app/LoadingState';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, APP_IDENTITY, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { adminService } from '@/services/adminService';
 import { authService } from '@/services/authService';
-import { useFocusEffect , useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -126,14 +126,14 @@ export default function AdminFacultyScreen() {
   });
 
   if (loading) {
-    return <LoadingState message="Loading faculty members..." />;
+    return <LoadingState message="Loading faculty instructors..." />;
   }
 
   return (
     <AppScreen scrollable>
       <Header
-        title="Faculty Management"
-        subtitle={`Total Instructors: ${facultyList.length}`}
+        title="Faculty Directory"
+        subtitle={`${facultyList.length} instructors registered`}
         showBack
         rightAction={{
           icon: 'plus.circle.fill',
@@ -142,21 +142,37 @@ export default function AdminFacultyScreen() {
         }}
       />
 
-      {/* Search Input */}
+      {/* Search Input Bar */}
       <View style={styles.searchBar}>
-        <IconSymbol size={20} name="magnifyingglass" color={APP_COLORS.textMuted} />
+        <IconSymbol size={18} name="magnifyingglass" color={APP_COLORS.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search by Faculty ID or name..."
           placeholderTextColor={APP_COLORS.textMuted}
           value={search}
           onChangeText={setSearch}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
+          <TouchableOpacity
+            onPress={() => setSearch('')}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <IconSymbol size={16} name="xmark.circle.fill" color={APP_COLORS.textMuted} />
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Count Status Header */}
+      <View style={styles.countSummaryRow}>
+        <Text style={styles.countSummaryText}>
+          {search ? `Found ${filteredFaculty.length} of ${facultyList.length} instructors` : `All Instructors (${facultyList.length})`}
+        </Text>
+        <Text style={styles.departmentLabel}>
+          {APP_IDENTITY.name} • Centre for Computer Science & Applications
+        </Text>
       </View>
 
       {/* Faculty List */}
@@ -164,78 +180,92 @@ export default function AdminFacultyScreen() {
         <EmptyState
           icon="person.2"
           title="No Faculty Found"
-          message={search ? 'No faculty matched your query.' : 'No faculty accounts registered.'}
+          message={search ? 'No instructors matched your search criteria.' : 'No faculty accounts registered.'}
         />
       ) : (
-        filteredFaculty.map((item) => (
-          <Card key={item.faculty.id} style={styles.facultyCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.facultyInfo}>
-                <Text style={styles.facultyName}>{item.user.name}</Text>
-                <Text style={styles.facultyMeta}>
-                  Faculty ID: {item.faculty.facultyId} • {item.subjects.length} Assigned Subject{item.subjects.length === 1 ? '' : 's'}
-                </Text>
-              </View>
-              <StatusBadge
-                status={item.faculty.active ? 'good' : 'critical'}
-                label={item.faculty.active ? 'ACTIVE' : 'DISABLED'}
-                size="small"
-              />
-            </View>
-
-            {item.subjects.length > 0 && (
-              <View style={styles.subjectsRow}>
-                {item.subjects.map((sub: any) => (
-                  <View key={sub.id} style={styles.subjectPill}>
-                    <Text style={styles.subjectPillText}>{sub.name} ({sub.code})</Text>
+        <View style={styles.listContainer}>
+          {filteredFaculty.map((item) => (
+            <Card key={item.faculty.id} style={styles.facultyCard} padded={false}>
+              <View style={styles.cardMain}>
+                <View style={styles.topRow}>
+                  <View style={styles.idBadge}>
+                    <Text style={styles.idBadgeText}>{item.faculty.facultyId}</Text>
                   </View>
-                ))}
-              </View>
-            )}
+                  <StatusBadge
+                    status={item.faculty.active ? 'good' : 'critical'}
+                    label={item.faculty.active ? 'ACTIVE' : 'DISABLED'}
+                    size="small"
+                  />
+                </View>
 
-            <View style={styles.cardActions}>
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => {
-                  setEditingFaculty(item);
-                  setEditName(item.user.name);
-                }}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={14} name="pencil" color={APP_COLORS.primary} />
-                <Text style={[styles.actionBtnText, { color: APP_COLORS.primary }]}>Edit</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => handleToggleActive(item)}
-                activeOpacity={0.7}
-              >
-                <IconSymbol
-                  size={14}
-                  name={item.faculty.active ? 'xmark.circle' : 'checkmark.circle'}
-                  color={item.faculty.active ? APP_COLORS.danger : APP_COLORS.success}
-                />
-                <Text
-                  style={[
-                    styles.actionBtnText,
-                    { color: item.faculty.active ? APP_COLORS.danger : APP_COLORS.success },
-                  ]}
-                >
-                  {item.faculty.active ? 'Disable' : 'Enable'}
+                <Text style={styles.facultyName}>{item.user.name}</Text>
+                <Text style={styles.facultyAffiliation}>
+                  Department Faculty • {item.subjects.length} Assigned Course{item.subjects.length === 1 ? '' : 's'}
                 </Text>
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ))
+
+                {item.subjects.length > 0 && (
+                  <View style={styles.subjectsContainer}>
+                    <Text style={styles.subjectsHeader}>TEACHING ASSIGNMENTS</Text>
+                    <View style={styles.subjectsWrap}>
+                      {item.subjects.map((sub: any) => (
+                        <View key={sub.id} style={styles.subjectChip}>
+                          <Text style={styles.subjectChipText}>
+                            {sub.code}: {sub.name}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.cardFooter}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => {
+                    setEditingFaculty(item);
+                    setEditName(item.user.name);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={14} name="pencil" color={APP_COLORS.obsidian} />
+                  <Text style={styles.editBtnText}>Edit Profile</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.toggleBtn,
+                    item.faculty.active ? styles.toggleDisable : styles.toggleEnable,
+                  ]}
+                  onPress={() => handleToggleActive(item)}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol
+                    size={14}
+                    name={item.faculty.active ? 'xmark.circle' : 'checkmark.circle'}
+                    color={item.faculty.active ? APP_COLORS.shortageText : APP_COLORS.safeText}
+                  />
+                  <Text
+                    style={[
+                      styles.toggleBtnText,
+                      { color: item.faculty.active ? APP_COLORS.shortageText : APP_COLORS.safeText },
+                    ]}
+                  >
+                    {item.faculty.active ? 'Disable' : 'Enable'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
+          ))}
+        </View>
       )}
 
       {/* Add Faculty Modal */}
-      <Modal visible={showAddModal} transparent animationType="slide">
+      <Modal visible={showAddModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add New Faculty</Text>
-            <Text style={styles.modalSubtitle}>Create an instructor account</Text>
+            <Text style={styles.modalSubtitle}>Create instructor credentials for DU Attend</Text>
 
             <AppInput
               label="Faculty ID *"
@@ -243,6 +273,7 @@ export default function AdminFacultyScreen() {
               value={newFacultyId}
               onChangeText={setNewFacultyId}
               autoCapitalize="characters"
+              leftIcon="person.text.rectangle"
             />
 
             <AppInput
@@ -250,6 +281,7 @@ export default function AdminFacultyScreen() {
               placeholder="e.g. Dr. Ananya Bora"
               value={newName}
               onChangeText={setNewName}
+              leftIcon="person.fill"
             />
 
             <AppInput
@@ -258,6 +290,7 @@ export default function AdminFacultyScreen() {
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
+              leftIcon="lock.fill"
             />
 
             <View style={styles.modalBtnRow}>
@@ -283,13 +316,16 @@ export default function AdminFacultyScreen() {
       <Modal visible={editingFaculty !== null} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Faculty</Text>
-            <Text style={styles.modalSubtitle}>ID: {editingFaculty?.faculty.facultyId}</Text>
+            <Text style={styles.modalTitle}>Edit Faculty Profile</Text>
+            <Text style={styles.modalSubtitle}>
+              Faculty ID: {editingFaculty?.faculty.facultyId}
+            </Text>
 
             <AppInput
               label="Full Name"
               value={editName}
               onChangeText={setEditName}
+              leftIcon="person.fill"
             />
 
             <View style={styles.modalBtnRow}>
@@ -318,113 +354,192 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surfaceVariant,
+    backgroundColor: APP_COLORS.surface,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginBottom: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     gap: 10,
+    ...TOKENS.shadows.subtle,
   },
   searchInput: {
     flex: 1,
     color: APP_COLORS.text,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  facultyCard: {
-    marginBottom: 10,
-    backgroundColor: APP_COLORS.surfaceVariant,
-  },
-  cardHeader: {
+  countSummaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingHorizontal: 4,
+    marginBottom: 12,
   },
-  facultyInfo: {
-    flex: 1,
-    paddingRight: 12,
+  countSummaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.textSecondary,
+  },
+  departmentLabel: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+    fontWeight: '500',
+  },
+  listContainer: {
+    gap: 10,
+    marginBottom: 24,
+  },
+  facultyCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  cardMain: {
+    padding: TOKENS.spacing.md,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  idBadge: {
+    backgroundColor: APP_COLORS.subSurface,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  idBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: APP_COLORS.obsidian,
+    letterSpacing: 0.5,
   },
   facultyName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
-  facultyMeta: {
-    fontSize: 12,
+  facultyAffiliation: {
+    ...TYPOGRAPHY.caption,
     color: APP_COLORS.textSecondary,
   },
-  subjectsRow: {
+  subjectsContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.borderSubtle,
+  },
+  subjectsHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  subjectsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 10,
   },
-  subjectPill: {
-    backgroundColor: APP_COLORS.surface,
+  subjectChip: {
+    backgroundColor: APP_COLORS.subSurface,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
   },
-  subjectPillText: {
+  subjectChipText: {
     fontSize: 11,
     fontWeight: '600',
     color: APP_COLORS.textSecondary,
   },
-  cardActions: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
-    paddingTop: 10,
+    gap: 10,
+    paddingHorizontal: TOKENS.spacing.md,
+    paddingVertical: 10,
+    backgroundColor: APP_COLORS.surfaceVariant,
     borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
+    borderTopColor: APP_COLORS.borderSubtle,
+    borderBottomLeftRadius: TOKENS.rounded.card,
+    borderBottomRightRadius: TOKENS.rounded.card,
   },
-  actionBtn: {
+  editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    gap: 6,
+    backgroundColor: APP_COLORS.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
   },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
+  editBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.obsidian,
+  },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  toggleDisable: {
+    backgroundColor: APP_COLORS.shortageBg,
+    borderColor: 'rgba(220, 38, 38, 0.2)',
+  },
+  toggleEnable: {
+    backgroundColor: APP_COLORS.safeBg,
+    borderColor: 'rgba(23, 135, 84, 0.2)',
+  },
+  toggleBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 18,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: 20,
     padding: 20,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.card,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.4,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 13,
     color: APP_COLORS.textSecondary,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   modalBtnRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     marginTop: 12,
   },
   modalBtn: {
     flex: 1,
   },
 });
-

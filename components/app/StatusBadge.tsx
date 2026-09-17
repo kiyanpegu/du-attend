@@ -11,7 +11,7 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, label, size = 'medium', showIcon = true, style }: StatusBadgeProps) {
-  let backgroundColor = APP_COLORS.surfaceVariant;
+  let backgroundColor = APP_COLORS.subSurface;
   let textColor = APP_COLORS.textSecondary;
   let iconName: IconSymbolName = 'info.circle';
   let text = label || status.toUpperCase();
@@ -19,35 +19,40 @@ export function StatusBadge({ status, label, size = 'medium', showIcon = true, s
   switch (status.toLowerCase()) {
     case 'good':
     case 'present':
-      backgroundColor = APP_COLORS.successSoft;
-      textColor = APP_COLORS.success;
+      backgroundColor = APP_COLORS.safeBg;
+      textColor = APP_COLORS.safeText;
       iconName = 'checkmark';
       break;
     case 'active':
-      backgroundColor = APP_COLORS.successSoft;
-      textColor = APP_COLORS.success;
+      backgroundColor = APP_COLORS.safeBg;
+      textColor = APP_COLORS.safeText;
       iconName = 'circle.fill';
       break;
     case 'warning':
-      backgroundColor = APP_COLORS.warningSoft;
-      textColor = APP_COLORS.warning;
+      backgroundColor = APP_COLORS.attentionBg;
+      textColor = APP_COLORS.attentionText;
       iconName = 'exclamationmark.triangle.fill';
       break;
     case 'critical':
     case 'absent':
-      backgroundColor = APP_COLORS.dangerSoft;
-      textColor = APP_COLORS.danger;
+      backgroundColor = APP_COLORS.shortageBg;
+      textColor = APP_COLORS.shortageText;
       iconName = 'xmark';
       break;
     case 'cancelled':
-      backgroundColor = APP_COLORS.dangerSoft;
-      textColor = APP_COLORS.danger;
+      backgroundColor = APP_COLORS.shortageBg;
+      textColor = APP_COLORS.shortageText;
       iconName = 'slash.circle';
       break;
     case 'ended':
-      backgroundColor = APP_COLORS.infoSoft;
-      textColor = APP_COLORS.info;
+      backgroundColor = APP_COLORS.subSurface;
+      textColor = APP_COLORS.textSecondary;
       iconName = 'clock.fill';
+      break;
+    default:
+      backgroundColor = APP_COLORS.categoryBg;
+      textColor = APP_COLORS.categoryText;
+      iconName = 'info.circle';
       break;
   }
 
@@ -91,19 +96,21 @@ const styles = StyleSheet.create({
   smallBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
     borderRadius: 9999, // Pill shape
   },
   icon: {
-    marginRight: 4,
+    marginRight: 5,
   },
   text: {
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   smallText: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });

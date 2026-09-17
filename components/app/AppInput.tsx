@@ -1,5 +1,5 @@
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
@@ -13,6 +13,7 @@ interface AppInputProps extends TextInputProps {
 
 export function AppInput({ label, error, leftIcon, rightElement, rightLabel, style, ...props }: AppInputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const isDisabled = props.editable === false;
 
   return (
     <View style={styles.container}>
@@ -25,16 +26,21 @@ export function AppInput({ label, error, leftIcon, rightElement, rightLabel, sty
       <View style={styles.inputContainer}>
         {leftIcon && (
           <View style={styles.leftIconWrapper}>
-            <IconSymbol name={leftIcon} size={20} color={APP_COLORS.textMuted} />
+            <IconSymbol 
+              name={leftIcon} 
+              size={18} 
+              color={isFocused ? APP_COLORS.text : APP_COLORS.textMuted} 
+            />
           </View>
         )}
         <TextInput
           style={[
             styles.input,
-            isFocused ? styles.inputFocused : undefined,
-            error ? styles.inputError : undefined,
-            leftIcon ? { paddingLeft: 44 } : undefined,
-            rightElement ? { paddingRight: 44 } : undefined,
+            isFocused && styles.inputFocused,
+            error && styles.inputError,
+            isDisabled && styles.inputDisabled,
+            leftIcon ? { paddingLeft: 42 } : undefined,
+            rightElement ? { paddingRight: 42 } : undefined,
             style,
           ]}
           placeholderTextColor={APP_COLORS.textMuted}
@@ -47,7 +53,7 @@ export function AppInput({ label, error, leftIcon, rightElement, rightLabel, sty
             props.onBlur?.(e);
           }}
           accessibilityLabel={label || props.placeholder}
-          accessibilityState={{ disabled: props.editable === false }}
+          accessibilityState={{ disabled: isDisabled }}
           {...props}
         />
         {rightElement && (
@@ -69,12 +75,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: APP_COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.text,
+    letterSpacing: 0.1,
   },
   inputContainer: {
     position: 'relative',
@@ -82,33 +89,46 @@ const styles = StyleSheet.create({
   },
   leftIconWrapper: {
     position: 'absolute',
-    left: 12,
+    left: 14,
     zIndex: 1,
   },
   rightElementWrapper: {
     position: 'absolute',
-    right: 12,
+    right: 14,
     zIndex: 1,
   },
   input: {
-    backgroundColor: APP_COLORS.surfaceVariant, // Using surfaceVariant as surface is too dark if surface is Level 1, wait in Stitch bg-surface-container-high is #282a32. Let's use surfaceVariant.
-    borderWidth: 1,
+    backgroundColor: APP_COLORS.surface,
+    borderWidth: 1.5,
     borderColor: APP_COLORS.border,
-    borderRadius: 8,
+    borderRadius: TOKENS.rounded.md,
     paddingHorizontal: 16,
     height: 52,
-    fontSize: 16,
+    fontSize: 15,
     color: APP_COLORS.text,
   },
   inputFocused: {
-    borderColor: APP_COLORS.primary,
+    borderColor: APP_COLORS.obsidian,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   inputError: {
-    borderColor: APP_COLORS.danger,
+    borderColor: APP_COLORS.shortageText,
+    backgroundColor: APP_COLORS.shortageBg,
+  },
+  inputDisabled: {
+    backgroundColor: APP_COLORS.subSurface,
+    color: APP_COLORS.textMuted,
+    borderColor: 'transparent',
   },
   errorText: {
-    color: APP_COLORS.danger,
+    color: APP_COLORS.shortageText,
     fontSize: 12,
+    fontWeight: '500',
     marginTop: 6,
   },
 });

@@ -37,64 +37,191 @@ export const STORAGE_KEYS = {
 };
 
 export const APP_COLORS = {
-  // Canvas / Levels
-  background: '#0F172A', // Level 0
-  surface: '#1E293B', // Level 1 (Inland)
-  surfaceVariant: '#334155', // Level 2 (Cards)
-  card: '#334155',
-  cardAlt: '#334155',
-  border: 'rgba(255,255,255,0.1)', // Low contrast borders
+  // Canvas & Surfaces (DU Attend Neo-Tactile)
+  canvas: '#F4F6F9',
+  background: '#F4F6F9', // Primary background canvas
+  surface: '#FFFFFF', // Clean floating cards, modals, sheets
+  surfaceVariant: '#FFFFFF', // Backwards compatibility for cards
+  subSurface: '#ECEEF2', // Inputs, secondary pill backgrounds
+  card: '#FFFFFF',
+  cardAlt: '#ECEEF2',
+  border: '#E2E4E9', // Clean soft boundary
+  borderSubtle: 'rgba(17, 19, 24, 0.05)', // Almost invisible separator
 
-  // Primary & Accents
-  primary: '#2563eb', // Primary Blue
-  primarySoft: 'rgba(37, 99, 235, 0.1)',
-  primaryDark: '#002a78',
-  onPrimary: '#ffffff',
-  
-  secondary: '#3a4a5f',
-  tertiary: '#bc4800', // Orange accent
+  // Primary & Warm Accents (Aurora & Brand)
+  primaryWarm: '#FF5E36', // Coral/Warm Accent
+  secondaryWarm: '#FFA133', // Amber Accent
+  primary: '#FF5E36', // Main brand accent
+  primaryDark: '#E04820',
+  primarySoft: 'rgba(255, 94, 54, 0.1)',
+  onPrimary: '#FFFFFF',
 
-  // Status Colors (Semantic Logic)
-  success: '#10b981', // Emerald Green
-  successSoft: 'rgba(16, 185, 129, 0.1)',
-  successDark: '#047857',
-  
-  warning: '#f59e0b', // Amber (Late/Warning)
-  warningSoft: 'rgba(245, 158, 11, 0.1)',
-  warningDark: '#b45309',
-  
-  danger: '#ef4444', // Absent / Critical
-  dangerSoft: 'rgba(239, 68, 68, 0.1)',
-  dangerDark: '#b91c1c',
-  
-  info: '#3b82f6',
-  infoSoft: 'rgba(59, 130, 246, 0.1)',
-  
-  // Text & Neutrals (Slate grays)
-  text: '#e1e2ed',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  muted: '#94a3b8',
-  subtle: '#64748b',
-  black: '#020617',
+  // Obsidian / Dark Hardware Elements (Buttons, High-Contrast Headers)
+  obsidian: '#18191E',
+  obsidianSoft: '#282A32',
+  charcoal: '#111318',
+
+  // Secondary & Tertiary Neutrals
+  secondary: '#ECEEF2',
+  tertiary: '#FFA133',
+
+  // Semantic Status Tokens (Reference Pastel Micro-Pills)
+  safeBg: '#EEFAF4',
+  safeText: '#178754',
+  success: '#178754',
+  successSoft: '#EEFAF4',
+  successDark: '#0E5C38',
+
+  attentionBg: '#FFF7ED',
+  attentionText: '#C2410C',
+  warning: '#C2410C',
+  warningSoft: '#FFF7ED',
+  warningDark: '#9A3412',
+
+  shortageBg: '#FEF2F2',
+  shortageText: '#DC2626',
+  danger: '#DC2626',
+  dangerSoft: '#FEF2F2',
+  dangerDark: '#991B1B',
+
+  categoryBg: '#FFF1ED',
+  categoryText: '#E05A47',
+
+  info: '#2563EB',
+  infoSoft: '#EFF6FF',
+
+  // Typography & Neutrals
+  text: '#111318', // Primary high-contrast text
+  textSecondary: '#717682', // Secondary metadata / subtitles
+  textMuted: '#959BA7', // Captions, placeholders, subtle hints
+  muted: '#717682',
+  subtle: '#959BA7',
+  black: '#111318',
+  white: '#FFFFFF',
 };
 
-// Stitch Spacing & Rounded tokens
+// Consistent Typography Hierarchy (DU Attend Neo-Tactile)
+export const TYPOGRAPHY = {
+  display: {
+    fontSize: 32,
+    fontWeight: '800' as const,
+    letterSpacing: -0.8,
+    lineHeight: 38,
+    color: APP_COLORS.text,
+  },
+  h1: {
+    fontSize: 26,
+    fontWeight: '700' as const,
+    letterSpacing: -0.6,
+    lineHeight: 32,
+    color: APP_COLORS.text,
+  },
+  h2: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    letterSpacing: -0.4,
+    lineHeight: 26,
+    color: APP_COLORS.text,
+  },
+  h3: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    letterSpacing: -0.2,
+    lineHeight: 22,
+    color: APP_COLORS.text,
+  },
+  body: {
+    fontSize: 15,
+    fontWeight: '400' as const,
+    lineHeight: 21,
+    color: APP_COLORS.text,
+  },
+  bodyMedium: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    lineHeight: 21,
+    color: APP_COLORS.text,
+  },
+  bodySecondary: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 20,
+    color: APP_COLORS.textSecondary,
+  },
+  caption: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    lineHeight: 16,
+    color: APP_COLORS.textMuted,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    letterSpacing: 0.2,
+    color: APP_COLORS.text,
+  },
+  microPill: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    letterSpacing: 0.2,
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: 0.2,
+  },
+};
+
+// Spacing, Rounded, and Shadow Scale
 export const TOKENS = {
   spacing: {
-    base: 4,
+    base: 16,
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 40,
+    md: 12,
+    lg: 20,
+    xl: 24,
+    xxl: 32,
+    xxxl: 40,
   },
   rounded: {
-    sm: 4,
-    md: 8,
-    lg: 16,
+    xs: 6,
+    sm: 10,
+    md: 14,
+    lg: 20,
     xl: 24,
+    card: 26,
     full: 9999,
+  },
+  shadows: {
+    subtle: {
+      shadowColor: '#101426',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.04,
+      shadowRadius: 12,
+      elevation: 2,
+    },
+    card: {
+      shadowColor: '#101426',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.06,
+      shadowRadius: 20,
+      elevation: 3,
+    },
+    elevated: {
+      shadowColor: '#101426',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.08,
+      shadowRadius: 26,
+      elevation: 6,
+    },
+    tactileButton: {
+      shadowColor: '#18191E',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.16,
+      shadowRadius: 10,
+      elevation: 4,
+    },
   },
 };
 

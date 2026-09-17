@@ -1,6 +1,6 @@
 import { AppScreen } from '@/components/app/AppScreen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS, APP_IDENTITY } from '@/constants/duAttend';
+import { APP_COLORS, APP_IDENTITY, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -18,10 +18,10 @@ export default function WelcomeScreen() {
       useNativeDriver: true,
     }).start();
 
-    // After 2.5 seconds, hide splash
+    // After 2.2 seconds, hide splash
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500);
+    }, 2200);
 
     return () => clearTimeout(timer);
   }, [fadeAnim]);
@@ -33,21 +33,21 @@ export default function WelcomeScreen() {
           <View style={styles.splashLogoContainer}>
             <View style={styles.splashLogoGlow} />
             <View style={styles.splashLogo}>
-              <IconSymbol size={72} name="graduationcap.fill" color={APP_COLORS.primary} />
+              <IconSymbol size={56} name="graduationcap.fill" color={APP_COLORS.primaryWarm} />
             </View>
           </View>
           <Text style={styles.splashTitle}>{APP_IDENTITY.name}</Text>
-          <Text style={styles.splashSubtitle}>{APP_IDENTITY.subtitle}</Text>
+          <Text style={styles.splashSubtitle}>Attendance Management Prototype</Text>
           
           <View style={styles.loadingDots}>
-            <View style={[styles.dot, { opacity: 0.8 }]} />
+            <View style={[styles.dot, { opacity: 0.9 }]} />
             <View style={[styles.dot, { opacity: 0.5 }]} />
-            <View style={[styles.dot, { opacity: 0.2 }]} />
+            <View style={[styles.dot, { opacity: 0.25 }]} />
           </View>
         </Animated.View>
         
         <View style={styles.splashFooter}>
-          <Text style={styles.splashFooterText}>© 2024 {APP_IDENTITY.university}</Text>
+          <Text style={styles.splashFooterText}>Dibrugarh University • CCSA Campus</Text>
         </View>
       </View>
     );
@@ -56,62 +56,124 @@ export default function WelcomeScreen() {
   return (
     <AppScreen scrollable>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{APP_IDENTITY.name}</Text>
-          <Text style={styles.headerSubtitle}>{APP_IDENTITY.university}</Text>
+        {/* Brand / Hero Header */}
+        <View style={styles.heroSection}>
+          <View style={styles.universityBadge}>
+            <View style={styles.universityBadgeDot} />
+            <Text style={styles.universityBadgeText}>DIBRUGARH UNIVERSITY • CCSA</Text>
+          </View>
+          <Text style={styles.heroTitle}>{APP_IDENTITY.name}</Text>
+          <Text style={styles.heroSubtitle}>
+            Smart, geofenced mobile attendance for campus lectures, real-time OTP check-ins, and academic eligibility tracking.
+          </Text>
         </View>
 
-        <Text style={styles.continueTitle}>Continue as</Text>
+        {/* Role Selection Section Header */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>SELECT ACCESS PORTAL</Text>
+          <Text style={styles.sectionHeaderSubtitle}>Choose your account type</Text>
+        </View>
 
+        {/* Role Cards Grid */}
         <View style={styles.roleGrid}>
+          {/* Student Role Card */}
           <TouchableOpacity
             style={styles.roleCard}
             onPress={() => router.push('/student-login' as never)}
-            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in as Student"
+            activeOpacity={0.75}
           >
-            <View style={styles.roleIconWrapPrimary}>
-              <IconSymbol size={32} name="person.fill" color={APP_COLORS.onPrimary} />
+            <View style={styles.roleCardContent}>
+              <View style={styles.roleIconWrapPrimary}>
+                <IconSymbol size={28} name="person.crop.circle.fill" color={APP_COLORS.primaryWarm} />
+              </View>
+              <View style={styles.roleTextGroup}>
+                <View style={styles.roleTitleRow}>
+                  <Text style={styles.roleTitle}>Student Portal</Text>
+                  <View style={styles.activeTag}>
+                    <Text style={styles.activeTagText}>STUDENT</Text>
+                  </View>
+                </View>
+                <Text style={styles.roleDesc}>
+                  Enter live 60-second OTPs, view timetable, and check semester exam eligibility.
+                </Text>
+              </View>
             </View>
-            <Text style={styles.roleTitle}>Student</Text>
-            <Text style={styles.roleDesc}>View attendance and mark classes</Text>
+            <View style={styles.roleCardFooter}>
+              <Text style={styles.roleActionText}>Sign in as Student</Text>
+              <IconSymbol size={14} name="chevron.right" color={APP_COLORS.primaryWarm} />
+            </View>
           </TouchableOpacity>
 
+          {/* Faculty Role Card */}
           <TouchableOpacity
             style={styles.roleCard}
             onPress={() => router.push('/faculty-login' as never)}
-            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in as Faculty"
+            activeOpacity={0.75}
           >
-            <View style={styles.roleIconWrapPrimary}>
-              <IconSymbol size={32} name="graduationcap.fill" color={APP_COLORS.onPrimary} />
+            <View style={styles.roleCardContent}>
+              <View style={styles.roleIconWrapSecondary}>
+                <IconSymbol size={28} name="briefcase.fill" color={APP_COLORS.categoryText} />
+              </View>
+              <View style={styles.roleTextGroup}>
+                <View style={styles.roleTitleRow}>
+                  <Text style={styles.roleTitle}>Faculty Portal</Text>
+                  <View style={styles.facultyTag}>
+                    <Text style={styles.facultyTagText}>FACULTY</Text>
+                  </View>
+                </View>
+                <Text style={styles.roleDesc}>
+                  Broadcast rotating OTPs, manage student rosters, and generate CSV reports.
+                </Text>
+              </View>
             </View>
-            <Text style={styles.roleTitle}>Faculty</Text>
-            <Text style={styles.roleDesc}>Manage classes and attendance</Text>
+            <View style={styles.roleCardFooter}>
+              <Text style={styles.roleActionTextSecondary}>Sign in as Faculty</Text>
+              <IconSymbol size={14} name="chevron.right" color={APP_COLORS.categoryText} />
+            </View>
           </TouchableOpacity>
 
+          {/* Admin Role Card (Restrained) */}
           <TouchableOpacity
-            style={styles.roleCard}
+            style={[styles.roleCard, styles.adminCard]}
             onPress={() => router.push('/admin-login' as never)}
-            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in as Administrator"
+            activeOpacity={0.75}
           >
-            <View style={styles.roleIconWrapTertiary}>
-              <IconSymbol size={32} name="shield.lefthalf.filled" color="#FFFFFF" />
+            <View style={styles.adminCardContent}>
+              <View style={styles.roleIconWrapAdmin}>
+                <IconSymbol size={22} name="shield.lefthalf.filled" color={APP_COLORS.obsidian} />
+              </View>
+              <View style={styles.adminTextGroup}>
+                <Text style={styles.adminTitle}>System Administrator</Text>
+                <Text style={styles.adminDesc}>
+                  Curriculum configuration, faculty course assignments, and master audits.
+                </Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
             </View>
-            <Text style={styles.roleTitle}>Administrator</Text>
-            <Text style={styles.roleDesc}>Manage university attendance</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Development Tools Action */}
         <TouchableOpacity
           style={styles.devToolsButton}
           onPress={() => router.push('/dev-tools' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Open Development Tools"
           activeOpacity={0.7}
         >
-          <IconSymbol size={16} name="slider.horizontal.3" color={APP_COLORS.textSecondary} />
-          <Text style={styles.devToolsText}>Development Tools</Text>
+          <IconSymbol size={15} name="slider.horizontal.3" color={APP_COLORS.textSecondary} />
+          <Text style={styles.devToolsText}>Development Tools & Reset Database</Text>
         </TouchableOpacity>
 
+        {/* Prototype Disclaimer */}
         <Text style={styles.disclaimerText}>
-          Independent demo prototype. Not an official Dibrugarh University application.
+          Independent demonstration prototype for Dibrugarh University attendance workflows. Not an official university release.
         </Text>
       </View>
     </AppScreen>
@@ -119,10 +181,10 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Splash Styles
+  // Splash Screen Styles
   splashContainer: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
+    backgroundColor: APP_COLORS.canvas,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -132,144 +194,253 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   splashLogoContainer: {
-    marginBottom: 40,
+    marginBottom: 28,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   splashLogoGlow: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: APP_COLORS.primary,
-    opacity: 0.15,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 94, 54, 0.15)',
   },
   splashLogo: {
-    width: 120,
-    height: 120,
-    borderRadius: 24,
-    backgroundColor: APP_COLORS.surfaceVariant,
+    width: 104,
+    height: 104,
+    borderRadius: 26,
+    backgroundColor: APP_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: APP_COLORS.border,
-    shadowColor: APP_COLORS.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+    ...TOKENS.shadows.card,
     zIndex: 2,
   },
   splashTitle: {
-    fontSize: 48,
+    fontSize: 38,
     fontWeight: '800',
-    color: APP_COLORS.primary,
-    letterSpacing: -1,
-    marginBottom: 12,
+    color: APP_COLORS.obsidian,
+    letterSpacing: -0.8,
+    marginBottom: 6,
   },
   splashSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '500',
     color: APP_COLORS.textSecondary,
     textAlign: 'center',
-    maxWidth: 240,
-    lineHeight: 24,
+    letterSpacing: 0.2,
   },
   loadingDots: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 48,
+    marginTop: 36,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: APP_COLORS.primary,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: APP_COLORS.primaryWarm,
   },
   splashFooter: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 36,
   },
   splashFooterText: {
     fontSize: 12,
     color: APP_COLORS.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 
-  // Role Selector Styles
+  // Main Welcome Portal Styles
   container: {
-    paddingVertical: 32,
-    paddingHorizontal: 16,
+    paddingVertical: TOKENS.spacing.lg,
+    paddingHorizontal: 4,
+  },
+  heroSection: {
+    marginBottom: TOKENS.spacing.xl,
+    paddingTop: TOKENS.spacing.xs,
+  },
+  universityBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  headerTitle: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: APP_COLORS.primary,
-    letterSpacing: -1,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 18,
-    color: APP_COLORS.textSecondary,
-  },
-  continueTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: APP_COLORS.text,
-    marginBottom: 24,
-  },
-  roleGrid: {
-    width: '100%',
-    maxWidth: 400,
-    gap: 16,
-    marginBottom: 40,
-  },
-  roleCard: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: TOKENS.rounded.full,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    minHeight: 200,
+    borderColor: 'rgba(224, 90, 71, 0.2)',
   },
-  roleIconWrapPrimary: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: APP_COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  universityBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: APP_COLORS.categoryText,
   },
-  roleIconWrapTertiary: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: APP_COLORS.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  universityBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.categoryText,
+    letterSpacing: 0.8,
   },
-  roleTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.8,
+    lineHeight: 38,
     marginBottom: 8,
   },
-  roleDesc: {
-    fontSize: 14,
+  heroSubtitle: {
+    ...TYPOGRAPHY.bodySecondary,
     color: APP_COLORS.textSecondary,
-    textAlign: 'center',
+    lineHeight: 21,
+  },
+  sectionHeaderRow: {
+    marginBottom: TOKENS.spacing.md,
+  },
+  sectionHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 1.1,
+  },
+  sectionHeaderSubtitle: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  roleGrid: {
+    gap: 14,
+    marginBottom: TOKENS.spacing.xl,
+  },
+  roleCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+    padding: TOKENS.spacing.base,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    ...TOKENS.shadows.subtle,
+  },
+  roleCardContent: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 14,
+  },
+  roleIconWrapPrimary: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: APP_COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleIconWrapSecondary: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: APP_COLORS.categoryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleIconWrapAdmin: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: APP_COLORS.subSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleTextGroup: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  roleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  roleTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+  },
+  activeTag: {
+    backgroundColor: APP_COLORS.primarySoft,
     paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: TOKENS.rounded.full,
+  },
+  activeTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.primaryWarm,
+    letterSpacing: 0.6,
+  },
+  facultyTag: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: TOKENS.rounded.full,
+  },
+  facultyTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: APP_COLORS.categoryText,
+    letterSpacing: 0.6,
+  },
+  roleDesc: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  roleCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.borderSubtle,
+  },
+  roleActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.primaryWarm,
+  },
+  roleActionTextSecondary: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  adminCard: {
+    backgroundColor: APP_COLORS.surface,
+  },
+  adminCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adminTextGroup: {
+    flex: 1,
+  },
+  adminTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.text,
+    marginBottom: 2,
+  },
+  adminDesc: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    lineHeight: 16,
   },
   devToolsButton: {
     flexDirection: 'row',
@@ -278,10 +449,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: TOKENS.rounded.md,
     backgroundColor: APP_COLORS.surface,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
+    marginBottom: 16,
+    ...TOKENS.shadows.subtle,
   },
   devToolsText: {
     fontSize: 13,
@@ -292,8 +465,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: APP_COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
     lineHeight: 16,
+    paddingHorizontal: 12,
   },
 });

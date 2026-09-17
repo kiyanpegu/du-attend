@@ -7,7 +7,7 @@ import { LoadingState } from '@/components/app/LoadingState';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { StudentBottomNav } from '@/components/app/StudentBottomNav';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { studentService } from '@/services/studentService';
@@ -25,23 +25,28 @@ export default function StudentProfileScreen() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const user = await authService.getActiveUser();
+    try {
+      const user = await authService.getActiveUser();
 
-    if (!user || user.role !== 'student') {
-      router.replace('/student-login' as never);
-      return;
+      if (!user || user.role !== 'student') {
+        router.replace('/student-login' as never);
+        return;
+      }
+
+      const [profile, subs, live] = await Promise.all([
+        studentService.getProfile(user.id),
+        studentService.getSubjects(user.id),
+        attendanceService.getActiveSessionsForStudent(user.id),
+      ]);
+
+      setProfileData(profile);
+      setSubjects(subs);
+      setActiveSessions(live);
+    } catch {
+      // safe fallback
+    } finally {
+      setLoading(false);
     }
-
-    const [profile, subs, live] = await Promise.all([
-      studentService.getProfile(user.id),
-      studentService.getSubjects(user.id),
-      attendanceService.getActiveSessionsForStudent(user.id),
-    ]);
-
-    setProfileData(profile);
-    setSubjects(subs);
-    setActiveSessions(live);
-    setLoading(false);
   }, [router]);
 
   useFocusEffect(
@@ -73,25 +78,42 @@ export default function StudentProfileScreen() {
   return (
     <View style={styles.screen}>
       <AppScreen scrollable contentContainerStyle={styles.scrollContent}>
-        <Header title="Student Profile" subtitle="Academic Record & Settings" showBack={false} />
+        <Header
+          title="Student Profile"
+          subtitle="Academic Identity & Settings"
+          showBack={false}
+          rightAction={{
+            icon: 'arrow.clockwise',
+            onPress: loadData,
+            label: 'Refresh',
+          }}
+        />
 
-        {/* Profile Card */}
-        <View style={styles.avatarCard}>
+        {/* Student Identity Card (Visual Focus) */}
+        <Card style={styles.identityCard} padded>
           <View style={styles.avatarWrap}>
-            <IconSymbol size={40} name="person.fill" color={APP_COLORS.primary} />
+            <IconSymbol size={36} name="person.fill" color={APP_COLORS.primary} />
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userStudentId}>{student.studentId}</Text>
-          <StatusBadge
-            status={student.active ? 'good' : 'critical'}
-            label={student.active ? 'ACTIVE ENROLMENT' : 'DISABLED'}
-            style={styles.statusBadge}
-          />
-        </View>
+          <Text style={styles.userName} numberOfLines={1}>{user.name}</Text>
+          <Text style={styles.userStudentId}>Roll No: {student.studentId}</Text>
+          <Text style={styles.userAcademicTag}>
+            {programme?.name ?? 'BCA'} • {semester?.name ?? '1st Semester'}
+          </Text>
+          <Text style={styles.userInstitutionText}>
+            {university?.name ?? 'Dibrugarh University'}
+          </Text>
+          <View style={styles.badgeWrapper}>
+            <StatusBadge
+              status={student.active ? 'present' : 'critical'}
+              label={student.active ? 'ENROLLED & ACTIVE' : 'INACTIVE'}
+              size="small"
+            />
+          </View>
+        </Card>
 
-        {/* Academic Affiliation */}
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>ACADEMIC AFFILIATION</Text>
+        {/* Academic Information Card */}
+        <Card style={styles.sectionCard} padded>
+          <Text style={styles.sectionTitle}>ACADEMIC INFORMATION</Text>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>University</Text>
@@ -100,7 +122,9 @@ export default function StudentProfileScreen() {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Department</Text>
-            <Text style={styles.infoValue}>{department?.name ?? 'Centre for Computer Science and Applications'}</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>
+              {department?.name ?? 'CCSA'}
+            </Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -112,34 +136,56 @@ export default function StudentProfileScreen() {
             <Text style={styles.infoLabel}>Semester</Text>
             <Text style={styles.infoValue}>{semester?.name ?? 'BCA 1st Semester'}</Text>
           </View>
+
+          <View style={styles.infoRowNoBorder}>
+            <Text style={styles.infoLabel}>Student Roll ID</Text>
+            <Text style={styles.infoValue}>{student.studentId}</Text>
+          </View>
         </Card>
 
-        {/* Enrolled Courses */}
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>ENROLLED SUBJECTS ({subjects.length})</Text>
+        {/* Enrolled Courses Card */}
+        <Card style={styles.sectionCard} padded>
+          <View style={styles.enrolledHeaderRow}>
+            <Text style={styles.sectionTitle}>ENROLLED SUBJECTS</Text>
+            <Text style={styles.enrolledCountBadge}>{subjects.length} Courses</Text>
+          </View>
 
           {subjects.map((sub, idx) => (
-            <View key={sub.subject.id || idx} style={styles.subjectRow}>
+            <View
+              key={sub.subject.id || idx}
+              style={[
+                styles.subjectRow,
+                idx === subjects.length - 1 && styles.subjectRowLast,
+              ]}
+            >
               <View style={styles.subjectInfo}>
-                <Text style={styles.subName}>{sub.subject.name}</Text>
-                <Text style={styles.subCode}>
-                  {sub.subject.code} • {sub.facultyName}
-                </Text>
+                <View style={styles.subjectCodePill}>
+                  <Text style={styles.subjectCodeText}>{sub.subject.code}</Text>
+                </View>
+                <View style={styles.subjectTextWrap}>
+                  <Text style={styles.subName} numberOfLines={1}>
+                    {sub.subject.name}
+                  </Text>
+                  <Text style={styles.subFaculty} numberOfLines={1}>
+                    {sub.facultyName}
+                  </Text>
+                </View>
               </View>
               <StatusBadge status={sub.standing} size="small" />
             </View>
           ))}
         </Card>
 
-        {/* In-App Self-Updating */}
-        <AppUpdateCard style={{ marginBottom: 16 }} />
+        {/* In-App Self-Updating System */}
+        <AppUpdateCard style={{ marginBottom: TOKENS.spacing.lg }} />
 
-        {/* Actions & Disclaimers */}
+        {/* Destructive Sign Out Action */}
         <View style={styles.actionWrap}>
           <AppButton
-            title="Sign Out"
+            title="Sign Out from DU Attend"
             onPress={handleLogout}
             variant="danger"
+            icon="rectangle.portrait.and.arrow.right"
           />
           <Text style={styles.disclaimerText}>
             Independent demo prototype. Not an official Dibrugarh University application.
@@ -155,72 +201,105 @@ export default function StudentProfileScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
+    backgroundColor: APP_COLORS.canvas,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 120,
   },
-  avatarCard: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 18,
-    padding: 22,
+  identityCard: {
+    backgroundColor: APP_COLORS.surface,
     alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    marginBottom: TOKENS.spacing.md,
+    borderRadius: TOKENS.rounded.card,
   },
   avatarWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: `${APP_COLORS.primary}20`,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: APP_COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
     borderWidth: 1.5,
-    borderColor: `${APP_COLORS.primary}40`,
+    borderColor: 'rgba(255, 94, 54, 0.25)',
   },
   userName: {
     fontSize: 22,
     fontWeight: '800',
     color: APP_COLORS.text,
+    letterSpacing: -0.4,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   userStudentId: {
-    fontSize: 14,
+    fontSize: 13,
     color: APP_COLORS.textSecondary,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  userAcademicTag: {
+    fontSize: 13,
+    color: APP_COLORS.text,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  userInstitutionText: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  badgeWrapper: {
     marginTop: 2,
   },
-  statusBadge: {
-    marginTop: 10,
-  },
   sectionCard: {
-    marginBottom: 16,
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 14,
+    marginBottom: TOKENS.spacing.md,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
   },
   sectionTitle: {
     fontSize: 11,
-    fontWeight: '800',
-    color: APP_COLORS.textSecondary,
-    letterSpacing: 1,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.8,
     marginBottom: 12,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    borderBottomColor: APP_COLORS.borderSubtle,
+  },
+  infoRowNoBorder: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   infoLabel: {
     fontSize: 13,
     color: APP_COLORS.textSecondary,
+    fontWeight: '500',
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: APP_COLORS.text,
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
+  enrolledHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  enrolledCountBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
   },
   subjectRow: {
     flexDirection: 'row',
@@ -228,31 +307,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    borderBottomColor: APP_COLORS.borderSubtle,
+  },
+  subjectRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
   },
   subjectInfo: {
     flex: 1,
-    paddingRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 10,
+  },
+  subjectCodePill: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: TOKENS.rounded.xs,
+  },
+  subjectCodeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  subjectTextWrap: {
+    flex: 1,
   },
   subName: {
     fontSize: 14,
     fontWeight: '600',
     color: APP_COLORS.text,
+    marginBottom: 1,
   },
-  subCode: {
+  subFaculty: {
     fontSize: 12,
-    color: APP_COLORS.textSecondary,
-    marginTop: 2,
+    color: APP_COLORS.textMuted,
   },
   actionWrap: {
-    marginTop: 10,
-    marginBottom: 24,
+    marginTop: 6,
+    marginBottom: 20,
   },
   disclaimerText: {
     fontSize: 11,
     color: APP_COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 14,
     lineHeight: 16,
   },
 });

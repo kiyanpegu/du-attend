@@ -4,7 +4,7 @@ import { Card } from '@/components/app/Card';
 import { LoadingState } from '@/components/app/LoadingState';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS } from '@/constants/duAttend';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { facultyService } from '@/services/facultyService';
@@ -58,7 +58,7 @@ export default function FacultyDashboard() {
   );
 
   const handleLogout = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out from the Faculty Portal?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out',
@@ -102,7 +102,7 @@ export default function FacultyDashboard() {
   };
 
   if (loading) {
-    return <LoadingState message="Loading faculty dashboard..." />;
+    return <LoadingState message="Loading faculty portal..." />;
   }
 
   if (!data) {
@@ -115,519 +115,525 @@ export default function FacultyDashboard() {
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening';
 
-  const getSubjectColor = (index: number) => {
-    const colors = [APP_COLORS.primary, APP_COLORS.success, APP_COLORS.warning, APP_COLORS.info, APP_COLORS.danger];
-    return colors[index % colors.length];
-  };
-
-  const getSubjectAccent = (index: number) => {
-    return { borderLeftWidth: 4, borderLeftColor: getSubjectColor(index) };
-  };
-
   const getSubjectLastSessionInfo = (subjectId: string) => {
-    const lastSession = data.recentSessions.find(s => s.subject.id === subjectId && s.session.status === 'ended');
+    const lastSession = data.recentSessions.find(
+      (s) => s.subject.id === subjectId && s.session.status === 'ended'
+    );
     if (!lastSession || lastSession.enrolledCount === 0) return null;
     const pct = Math.round((lastSession.presentCount / lastSession.enrolledCount) * 100);
-    return `${pct}% Present`;
+    return `${pct}% Attendance`;
   };
 
   const getSubjectEnrolledCount = (subjectId: string) => {
-    const lastSession = data.recentSessions.find(s => s.subject.id === subjectId);
+    const lastSession = data.recentSessions.find((s) => s.subject.id === subjectId);
     if (lastSession) return lastSession.enrolledCount;
-    return 0; // fallback if no sessions ever
+    return 0;
   };
 
   return (
-    <AppScreen scrollable>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <IconSymbol size={32} name="graduationcap.fill" color={APP_COLORS.primary} />
-          <Text style={styles.headerTitle}>DU Attend</Text>
+    <AppScreen scrollable contentContainerStyle={styles.scrollContent}>
+      {/* Header Bar */}
+      <View style={styles.topBar}>
+        <View style={styles.brandRow}>
+          <IconSymbol size={26} name="building.columns.fill" color={APP_COLORS.primary} />
+          <View>
+            <Text style={styles.brandTitle}>DU Attend</Text>
+            <Text style={styles.portalTag}>FACULTY PORTAL</Text>
+          </View>
         </View>
-        <AppButton 
-          title=""
-          variant="outline"
+        <TouchableOpacity
+          style={styles.signOutBtn}
           onPress={handleLogout}
-          icon="rectangle.portrait.and.arrow.right"
-          style={styles.logoutBtn}
-        />
+          activeOpacity={0.7}
+          accessibilityLabel="Sign out"
+        >
+          <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color={APP_COLORS.textSecondary} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.container}>
-        <View style={styles.welcomeSection}>
-          <View style={styles.welcomeTextWrap}>
-            <Text style={styles.welcomeTitle}>{greeting}, {user.name}</Text>
-            <Text style={styles.welcomeSubtitle}>Faculty ID: {faculty.facultyId}</Text>
+      {/* Faculty Identity & Welcome Context */}
+      <View style={styles.contextHero}>
+        <Text style={styles.welcomeHeading}>{greeting}, {user.name}</Text>
+        <Text style={styles.contextMeta}>
+          Faculty ID: {faculty.facultyId} • Department of Computer Science & Applications
+        </Text>
+      </View>
+
+      {/* High-Priority Active Session Alert */}
+      {activeSession ? (
+        <Card style={styles.activeBannerCard} padded>
+          <View style={styles.activeTopRow}>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveIndicatorText}>LIVE BROADCAST IN PROGRESS</Text>
+            </View>
+            <StatusBadge status="present" label="STREAMING" size="small" />
           </View>
-          
+
+          <Text style={styles.activeSubjectTitle} numberOfLines={2}>
+            {activeSubject?.name ?? 'Live Lecture Session'}
+          </Text>
+          <Text style={styles.activeSubjectSub}>
+            {activeSubject?.code ?? 'BCA'} • CCSA Lecture Hall 1
+          </Text>
+
+          <View style={styles.activeOtpBox}>
+            <View>
+              <Text style={styles.activeOtpLabel}>CURRENT BROADCAST CODE</Text>
+              <Text style={styles.activeOtpCode}>{activeSession.otp}</Text>
+            </View>
+            <AppButton
+              title="Command Center"
+              onPress={() => router.push('/faculty-active-class' as never)}
+              variant="primary"
+              size="medium"
+              icon="arrow.up.right"
+            />
+          </View>
+        </Card>
+      ) : (
+        /* Primary Class Starter Button */
+        <View style={styles.primaryActionWrap}>
           <AppButton
-            title="Start New Class"
-            icon="play.circle.fill"
+            title="Start New Class Session"
+            icon="plus.circle.fill"
             onPress={() => {
-              if (activeSession) {
-                router.push('/faculty-active-class' as never);
-              } else if (assignedSubjects.length === 1) {
+              if (assignedSubjects.length === 1) {
                 handleStartClass(assignedSubjects[0]);
               } else {
                 router.push('/faculty-select-subject' as never);
               }
             }}
             variant="primary"
+            size="large"
             style={styles.startClassBtn}
           />
         </View>
+      )}
 
-        {activeSession && (
-          <Card style={styles.activeCard} padded={false}>
-            <View style={styles.activeContent}>
-              <View style={styles.activeHeader}>
-                <View style={styles.liveTagWrap}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.activeLabel}>CLASS IN PROGRESS</Text>
-                </View>
-                <StatusBadge status="active" size="small" />
-              </View>
-
-              <Text style={styles.activeSubject}>{activeSubject?.name ?? 'Assigned Subject'}</Text>
-              <Text style={styles.activeCode}>{activeSubject?.code ?? 'Active Session'}</Text>
-
-              <View style={styles.activeOtpRow}>
-                <View style={styles.activeOtpBox}>
-                  <Text style={styles.activeOtpLabel}>CURRENT OTP</Text>
-                  <Text style={styles.activeOtpVal}>{activeSession.otp}</Text>
-                </View>
-                <AppButton
-                  title="Manage Live Class"
-                  onPress={() => router.push('/faculty-active-class' as never)}
-                  variant="primary"
-                  size="medium"
-                  style={styles.manageBtn}
-                />
-              </View>
-            </View>
-          </Card>
-        )}
-
-        <Text style={styles.sectionTitle}>My Subjects</Text>
-        {assignedSubjects.length === 0 ? (
-          <Text style={styles.emptyText}>No subjects assigned.</Text>
-        ) : (
-          <View style={styles.subjectsGrid}>
-            {assignedSubjects.map((subject, index) => {
-              const lastSessionPct = getSubjectLastSessionInfo(subject.id);
-              const enrolledCount = getSubjectEnrolledCount(subject.id);
-              
-              return (
-                <Card key={subject.id} style={[styles.subjectCard, getSubjectAccent(index)]}>
-                  <View style={styles.subjectCardTop}>
-                    <View style={styles.subjectCardText}>
-                      <View style={styles.subjectBadge}>
-                        <Text style={styles.subjectBadgeText}>{subject.code}</Text>
-                      </View>
-                      <Text style={styles.subjectName} numberOfLines={2}>{subject.name}</Text>
-                    </View>
-                    <IconSymbol size={24} name="book.fill" color={getSubjectColor(index)} />
-                  </View>
-                  <View style={styles.subjectCardBottom}>
-                    <View>
-                      <Text style={styles.subjectMetaLabel}>Students</Text>
-                      <Text style={styles.subjectMetaValue}>{enrolledCount} Enrolled</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.subjectMetaLabel}>Last Session</Text>
-                      <Text style={[styles.subjectMetaValue, { color: APP_COLORS.success }]}>
-                        {lastSessionPct ?? 'N/A'}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Quick Action Navigation Tiles for Reports and History */}
-        <View style={styles.quickModulesRow}>
-          <TouchableOpacity
-            style={styles.moduleCard}
-            onPress={() => router.push('/faculty-reports' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.moduleIconWrap, { backgroundColor: `${APP_COLORS.primary}20` }]}>
-              <IconSymbol size={20} name="chart.bar.fill" color={APP_COLORS.primary} />
-            </View>
-            <View style={styles.moduleTextWrap}>
-              <Text style={styles.moduleTitle}>Attendance Reports</Text>
-              <Text style={styles.moduleSubtitle}>Averages & student eligibility</Text>
-            </View>
-            <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.moduleCard}
-            onPress={() => router.push('/faculty-history' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.moduleIconWrap, { backgroundColor: `${APP_COLORS.success}20` }]}>
-              <IconSymbol size={20} name="clock.arrow.circlepath" color={APP_COLORS.success} />
-            </View>
-            <View style={styles.moduleTextWrap}>
-              <Text style={styles.moduleTitle}>Session History</Text>
-              <Text style={styles.moduleSubtitle}>Audit conducted classes</Text>
-            </View>
-            <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textSecondary} />
-          </TouchableOpacity>
+      {/* Operational Teaching Metrics */}
+      <View style={styles.metricsBar}>
+        <View style={styles.metricItem}>
+          <Text style={styles.metricValue}>{activeSession ? '1 Live' : 'Idle'}</Text>
+          <Text style={styles.metricLabel}>Active Class</Text>
         </View>
-
-        {recentSessions.length > 0 && (
-          <View style={styles.recentSection}>
-            <View style={styles.recentHeaderRow}>
-              <Text style={styles.sectionTitle}>Recent Sessions</Text>
-              <TouchableOpacity onPress={() => router.push('/faculty-history' as never)}>
-                <Text style={styles.viewAllHistory}>View All History →</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.timelineContainer}>
-              <View style={styles.timelineLine} />
-              
-              {recentSessions.slice(0, 5).map((report, index) => (
-                <View key={report.session.id} style={styles.timelineItem}>
-                  <View style={[styles.timelineIconWrap, index === 0 ? styles.timelineIconActive : styles.timelineIconInactive]}>
-                    <IconSymbol 
-                      size={14} 
-                      name={index === 0 ? "checkmark" : "clock.fill"} 
-                      color={index === 0 ? APP_COLORS.primary : APP_COLORS.textMuted} 
-                    />
-                  </View>
-                  
-                  <View style={[styles.timelineContent, index > 0 && { opacity: 0.8 }]}>
-                    <View style={styles.timelineContentLeft}>
-                      <Text style={styles.timelineTitle}>{report.subject.name}</Text>
-                      <Text style={styles.timelineMeta}>
-                        {new Date(report.session.startedAt).toLocaleDateString('en-IN', {
-                          weekday: 'short', month: 'short', day: 'numeric'
-                        })} • {new Date(report.session.startedAt).toLocaleTimeString('en-IN', {
-                          hour: '2-digit', minute: '2-digit'
-                        })}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.timelinePill}>
-                      <IconSymbol size={14} name="person.3.fill" color={APP_COLORS.success} />
-                      <Text style={styles.timelinePillText}>
-                        {report.presentCount}/{report.enrolledCount} Present
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <Text style={styles.disclaimerText}>
-          Independent demo prototype. Not an official Dibrugarh University application.
-        </Text>
+        <View style={styles.metricDivider} />
+        <View style={styles.metricItem}>
+          <Text style={styles.metricValue}>{assignedSubjects.length}</Text>
+          <Text style={styles.metricLabel}>Assigned Courses</Text>
+        </View>
+        <View style={styles.metricDivider} />
+        <View style={styles.metricItem}>
+          <Text style={styles.metricValue}>{recentSessions.length}</Text>
+          <Text style={styles.metricLabel}>Conducted Classes</Text>
+        </View>
       </View>
+
+      {/* Assigned Subjects Section */}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeading}>ASSIGNED COURSES</Text>
+        <Text style={styles.sectionCounter}>{assignedSubjects.length} Total</Text>
+      </View>
+
+      {assignedSubjects.length === 0 ? (
+        <Card style={styles.emptySubjectCard} padded>
+          <IconSymbol size={28} name="book" color={APP_COLORS.textMuted} />
+          <Text style={styles.emptySubjectText}>No courses assigned to your faculty profile.</Text>
+        </Card>
+      ) : (
+        assignedSubjects.map((subject) => {
+          const lastSessionInfo = getSubjectLastSessionInfo(subject.id);
+          const enrolledCount = getSubjectEnrolledCount(subject.id);
+          const isCurrentActive = activeSession?.subjectId === subject.id;
+
+          return (
+            <Card key={subject.id} style={styles.courseCard} padded>
+              <View style={styles.courseTopRow}>
+                <View style={styles.codePill}>
+                  <Text style={styles.codePillText}>{subject.code}</Text>
+                </View>
+                <Text style={styles.enrolledText}>{enrolledCount} Students Enrolled</Text>
+              </View>
+
+              <Text style={styles.courseTitle} numberOfLines={2}>
+                {subject.name}
+              </Text>
+
+              <View style={styles.courseBottomRow}>
+                <View style={styles.lastSessionWrap}>
+                  <Text style={styles.lastSessionLabel}>Recent Participation</Text>
+                  <Text style={[styles.lastSessionValue, lastSessionInfo && { color: APP_COLORS.safeText }]}>
+                    {lastSessionInfo ?? 'No sessions yet'}
+                  </Text>
+                </View>
+
+                {isCurrentActive ? (
+                  <AppButton
+                    title="Live Now"
+                    onPress={() => router.push('/faculty-active-class' as never)}
+                    variant="primary"
+                    size="small"
+                    icon="arrow.up.right"
+                  />
+                ) : (
+                  <AppButton
+                    title="Start Class"
+                    onPress={() => handleStartClass(subject)}
+                    variant="secondary"
+                    size="small"
+                    icon="play.fill"
+                  />
+                )}
+              </View>
+            </Card>
+          );
+        })
+      )}
+
+      {/* Quick Operational Modules */}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeading}>FACULTY SERVICES</Text>
+      </View>
+
+      <View style={styles.modulesGrid}>
+        <TouchableOpacity
+          style={styles.moduleCard}
+          onPress={() => router.push('/faculty-reports' as never)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.moduleIconWrap, { backgroundColor: APP_COLORS.categoryBg }]}>
+            <IconSymbol size={20} name="chart.bar.fill" color={APP_COLORS.categoryText} />
+          </View>
+          <View style={styles.moduleTextWrap}>
+            <Text style={styles.moduleTitle}>Attendance Reports</Text>
+            <Text style={styles.moduleSubtitle}>Export CSV sheets & student averages</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.moduleCard}
+          onPress={() => router.push('/faculty-history' as never)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.moduleIconWrap, { backgroundColor: APP_COLORS.safeBg }]}>
+            <IconSymbol size={20} name="clock.arrow.circlepath" color={APP_COLORS.safeText} />
+          </View>
+          <View style={styles.moduleTextWrap}>
+            <Text style={styles.moduleTitle}>Session History</Text>
+            <Text style={styles.moduleSubtitle}>Audit and review conducted classes</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Sessions Timeline */}
+      {recentSessions.length > 0 && (
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeading}>RECENTLY CONDUCTED CLASSES</Text>
+            <TouchableOpacity onPress={() => router.push('/faculty-history' as never)}>
+              <Text style={styles.viewAllLink}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentSessions.slice(0, 4).map((report) => (
+            <Card key={report.session.id} style={styles.recentSessionCard} padded>
+              <View style={styles.recentSessionHeader}>
+                <Text style={styles.recentSessionTitle} numberOfLines={1}>
+                  {report.subject.name}
+                </Text>
+                <View style={styles.recentTurnoutPill}>
+                  <Text style={styles.recentTurnoutText}>
+                    {report.presentCount}/{report.enrolledCount} Present
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.recentSessionTime}>
+                {new Date(report.session.startedAt).toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}{' '}
+                •{' '}
+                {new Date(report.session.startedAt).toLocaleTimeString('en-IN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+            </Card>
+          ))}
+        </View>
+      )}
+
+      <Text style={styles.disclaimerText}>
+        Independent demo prototype. Not an official Dibrugarh University application.
+      </Text>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+  scrollContent: {
+    paddingBottom: 40,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: APP_COLORS.surfaceVariant,
+    marginBottom: TOKENS.spacing.md,
+    paddingTop: 4,
   },
-  headerLeft: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  headerTitle: {
-    fontSize: 20,
+  brandTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: APP_COLORS.primary,
+    color: APP_COLORS.text,
+    letterSpacing: -0.3,
   },
-  logoutBtn: {
-    borderWidth: 0,
-    width: 44,
-    height: 44,
-    paddingHorizontal: 0,
-  },
-  welcomeSection: {
-    flexDirection: 'column',
-    gap: 16,
-    marginBottom: 24,
-    marginTop: 16,
-  },
-  welcomeTextWrap: {
-    flex: 1,
-  },
-  welcomeTitle: {
-    fontSize: 28,
+  portalTag: {
+    fontSize: 10,
     fontWeight: '700',
+    color: APP_COLORS.categoryText,
+    letterSpacing: 0.8,
+  },
+  signOutBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: APP_COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+  },
+  contextHero: {
+    marginBottom: TOKENS.spacing.lg,
+  },
+  welcomeHeading: {
+    fontSize: 24,
+    fontWeight: '800',
     color: APP_COLORS.text,
     letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  welcomeSubtitle: {
-    fontSize: 16,
+  contextMeta: {
+    fontSize: 13,
     color: APP_COLORS.textSecondary,
-    marginTop: 4,
+    lineHeight: 18,
   },
-  startClassBtn: {
-    width: '100%',
-  },
-  activeCard: {
-    backgroundColor: `${APP_COLORS.primary}15`,
-    borderColor: APP_COLORS.primary,
+  activeBannerCard: {
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
     borderWidth: 1.5,
-    borderRadius: 16,
-    marginBottom: 24,
+    borderColor: APP_COLORS.primaryWarm,
+    marginBottom: TOKENS.spacing.lg,
   },
-  activeContent: {
-    padding: 16,
-  },
-  activeHeader: {
+  activeTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  liveTagWrap: {
+  liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: APP_COLORS.success,
+    backgroundColor: APP_COLORS.primaryWarm,
   },
-  activeLabel: {
-    fontSize: 12,
+  liveIndicatorText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: APP_COLORS.primary,
-    letterSpacing: 1.2,
+    color: APP_COLORS.primaryWarm,
+    letterSpacing: 0.8,
   },
-  activeSubject: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: APP_COLORS.text,
-    marginBottom: 2,
-  },
-  activeCode: {
-    fontSize: 13,
-    color: APP_COLORS.textSecondary,
-    marginBottom: 12,
-  },
-  activeOtpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: APP_COLORS.surface,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-  },
-  activeOtpBox: {},
-  activeOtpLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: APP_COLORS.textSecondary,
-    letterSpacing: 1,
-  },
-  activeOtpVal: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: APP_COLORS.primary,
-    letterSpacing: 4,
-    fontVariant: ['tabular-nums'],
-  },
-  manageBtn: {
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: APP_COLORS.text,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: APP_COLORS.textMuted,
-    paddingVertical: 16,
-  },
-  subjectsGrid: {
-    flexDirection: 'column',
-    gap: 12,
-    marginBottom: 32,
-  },
-  subjectCard: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  subjectCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  subjectCardText: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  subjectBadge: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  subjectBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: APP_COLORS.textSecondary,
-  },
-  subjectName: {
+  activeSubjectTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: APP_COLORS.text,
-  },
-  subjectCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
-    paddingTop: 12,
-  },
-  subjectMetaLabel: {
-    fontSize: 12,
-    color: APP_COLORS.textSecondary,
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
-  subjectMetaValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: APP_COLORS.text,
+  activeSubjectSub: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginBottom: 14,
   },
-  recentSection: {
-    marginTop: 8,
-  },
-  timelineContainer: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: 31,
-    top: 32,
-    bottom: 32,
-    width: 2,
-    backgroundColor: APP_COLORS.border,
-  },
-  timelineItem: {
+  activeOtpBox: {
     flexDirection: 'row',
-    marginBottom: 16,
-  },
-  timelineIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    marginTop: 8,
-    borderWidth: 4,
-    borderColor: APP_COLORS.surfaceVariant,
-    zIndex: 2,
-  },
-  timelineIconActive: {
-    backgroundColor: `${APP_COLORS.primary}30`,
-  },
-  timelineIconInactive: {
-    backgroundColor: APP_COLORS.surfaceVariant,
-  },
-  timelineContent: {
-    flex: 1,
-    flexDirection: 'column',
-    backgroundColor: APP_COLORS.surface,
+    backgroundColor: APP_COLORS.subSurface,
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    gap: 8,
+    borderRadius: TOKENS.rounded.md,
   },
-  timelineContentLeft: {
+  activeOtpLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  activeOtpCode: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: APP_COLORS.text,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 3,
+  },
+  primaryActionWrap: {
+    marginBottom: TOKENS.spacing.lg,
+  },
+  startClassBtn: {
+    width: '100%',
+  },
+  metricsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: TOKENS.spacing.xl,
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+    shadowColor: '#101426',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  metricItem: {
+    alignItems: 'center',
     flex: 1,
   },
-  timelineTitle: {
+  metricValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: APP_COLORS.text,
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: APP_COLORS.textSecondary,
+  },
+  metricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: APP_COLORS.borderSubtle,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.textMuted,
+    letterSpacing: 0.8,
+  },
+  sectionCounter: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+  },
+  emptySubjectCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginBottom: TOKENS.spacing.lg,
+  },
+  emptySubjectText: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginTop: 8,
+  },
+  courseCard: {
+    marginBottom: TOKENS.spacing.md,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.card,
+  },
+  courseTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  codePill: {
+    backgroundColor: APP_COLORS.categoryBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: TOKENS.rounded.xs,
+  },
+  codePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.categoryText,
+  },
+  enrolledText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: APP_COLORS.textMuted,
+  },
+  courseTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: APP_COLORS.text,
-    marginBottom: 4,
+    letterSpacing: -0.2,
+    marginBottom: 12,
   },
-  timelineMeta: {
-    fontSize: 12,
-    color: APP_COLORS.textSecondary,
-  },
-  timelinePill: {
+  courseBottomRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: APP_COLORS.surfaceVariant,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    alignSelf: 'flex-start',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.borderSubtle,
   },
-  timelinePillText: {
-    fontSize: 12,
+  lastSessionWrap: {
+    flex: 1,
+  },
+  lastSessionLabel: {
+    fontSize: 11,
+    color: APP_COLORS.textMuted,
+  },
+  lastSessionValue: {
+    fontSize: 13,
     fontWeight: '600',
-    color: APP_COLORS.text,
+    color: APP_COLORS.textSecondary,
+    marginTop: 1,
   },
-  quickModulesRow: {
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 8,
+  modulesGrid: {
+    gap: 10,
+    marginBottom: TOKENS.spacing.xl,
   },
   moduleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surfaceVariant,
+    backgroundColor: APP_COLORS.surface,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: TOKENS.rounded.lg,
     borderWidth: 1,
-    borderColor: APP_COLORS.border,
+    borderColor: APP_COLORS.borderSubtle,
     gap: 12,
   },
   moduleIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -635,7 +641,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   moduleTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: APP_COLORS.text,
     marginBottom: 2,
@@ -644,23 +650,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: APP_COLORS.textSecondary,
   },
-  recentHeaderRow: {
+  recentSection: {
+    marginBottom: TOKENS.spacing.lg,
+  },
+  viewAllLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.primaryWarm,
+  },
+  recentSessionCard: {
+    marginBottom: 8,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: TOKENS.rounded.md,
+  },
+  recentSessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 4,
   },
-  viewAllHistory: {
-    fontSize: 13,
+  recentSessionTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: APP_COLORS.primary,
+    color: APP_COLORS.text,
+    flex: 1,
+    marginRight: 8,
+  },
+  recentTurnoutPill: {
+    backgroundColor: APP_COLORS.safeBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: TOKENS.rounded.full,
+  },
+  recentTurnoutText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.safeText,
+  },
+  recentSessionTime: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
   },
   disclaimerText: {
     fontSize: 11,
     color: APP_COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 16,
     lineHeight: 16,
   },
 });

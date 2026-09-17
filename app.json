@@ -2,24 +2,24 @@
   "expo": {
     "name": "DU Attend",
     "slug": "CollegeAttendance",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "duattend",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0F172A",
+        "backgroundColor": "#F4F6F9",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.kiyancantcode.CollegeAttendance",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "output": "static",
@@ -34,9 +34,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0F172A",
+          "backgroundColor": "#F4F6F9",
           "dark": {
-            "backgroundColor": "#0F172A"
+            "backgroundColor": "#18191E"
           }
         }
       ],
