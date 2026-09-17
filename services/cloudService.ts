@@ -125,6 +125,26 @@ export const cloudService = {
     }
   },
 
+  /**
+   * Defensive cleanup: end any stale 'active' sessions for a faculty in Supabase,
+   * excluding a specific session (typically the newly created one).
+   * This prevents student devices from seeing orphaned sessions that were ended
+   * locally but the cloud update failed.
+   */
+  async endStaleSessionsForFaculty(facultyId: string, excludeSessionId: string): Promise<void> {
+    if (!this.isOnline() || !supabase) return;
+    try {
+      await supabase
+        .from('attendance_sessions')
+        .update({ status: 'ended', ended_at: new Date().toISOString() })
+        .eq('faculty_id', facultyId)
+        .eq('status', 'active')
+        .neq('id', excludeSessionId);
+    } catch {
+      // Best-effort cleanup — don't block the new session
+    }
+  },
+
   // --------------------------------------------------------------------------
   // Attendance Records
   // --------------------------------------------------------------------------

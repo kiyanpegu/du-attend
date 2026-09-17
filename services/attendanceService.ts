@@ -371,15 +371,22 @@ export const attendanceService = {
         data: existingSessionData,
       };
     }
+    const finalSession = createdSession as AttendanceSession;
 
     if (cloudService.isOnline()) {
-      await cloudService.createSession(createdSession);
+      await cloudService.createSession(finalSession);
+      // Defensive cleanup: end any orphaned 'active' sessions in Supabase
+      // that might have failed to update when ended locally
+      await cloudService.endStaleSessionsForFaculty(
+        finalSession.facultyId,
+        finalSession.id
+      );
     }
 
     return {
       ok: true,
       message: 'Attendance session started successfully.',
-      data: createdSession,
+      data: finalSession,
     };
   },
 
@@ -487,9 +494,11 @@ export const attendanceService = {
       .filter((item) => item.studentId === student.id && item.active)
       .map((item) => item.subjectId);
 
-    return database.attendanceSessions.filter(
-      (session) => session.status === 'active' && subjectIds.includes(session.subjectId)
-    );
+    return database.attendanceSessions
+      .filter(
+        (session) => session.status === 'active' && subjectIds.includes(session.subjectId)
+      )
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   },
 
   async submitOtp(studentUserId: string, otpInput: string): Promise<ServiceResult<AttendanceRecord>> {
