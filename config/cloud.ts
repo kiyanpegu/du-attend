@@ -32,3 +32,4 @@ export const supabase: SupabaseClient | null = CLOUD_CONFIG.isConfigured
       },
     })
   : null;
+

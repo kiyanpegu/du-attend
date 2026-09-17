@@ -12,8 +12,8 @@ import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { cloudService } from '@/services/cloudService';
 import type { FacultySessionReport } from '@/types/models';
-import { useFocusEffect , useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     StyleSheet,

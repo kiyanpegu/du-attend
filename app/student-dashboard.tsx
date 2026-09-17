@@ -15,7 +15,7 @@ import { studentService } from '@/services/studentService';
 import type { AttendanceSession, ClassScheduleItem, DayOfWeek, StudentDashboardData, SubjectAttendanceSummary } from '@/types/models';
 import { calculateAttendanceAdvice } from '@/utils/format';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function StudentDashboard() {
