@@ -11,7 +11,7 @@ import { authService } from '@/services/authService';
 import { storageService } from '@/services/storageService';
 import type { LocalDatabase } from '@/types/models';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DevToolsScreen() {
