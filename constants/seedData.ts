@@ -1,10 +1,10 @@
 import {
-  CCSA_ENROLLMENTS,
-  CCSA_PROGRAMMES,
-  CCSA_SEMESTERS,
-  CCSA_STUDENT_USERS,
-  CCSA_STUDENTS,
-  CCSA_SUBJECTS,
+    CCSA_ENROLLMENTS,
+    CCSA_PROGRAMMES,
+    CCSA_SEMESTERS,
+    CCSA_STUDENT_USERS,
+    CCSA_STUDENTS,
+    CCSA_SUBJECTS,
 } from '@/constants/ccsaRoster';
 import type { LocalDatabase } from '@/types/models';
 
@@ -86,7 +86,7 @@ export const SEED_DATABASE: LocalDatabase = {
     {
       id: SEED_IDS.facultyUser,
       role: 'faculty',
-      name: 'Faculty 1',
+      name: 'Course Instructor',
       username: 'FAC001',
       active: true,
       developmentPassword: 'faculty123',

@@ -5,28 +5,38 @@ import type { ClassScheduleItem, DayOfWeek, ScheduleOverride, ServiceResult } fr
 import { createId } from '@/utils/format';
 
 export const DEFAULT_TIMETABLE: ClassScheduleItem[] = [
-  // Monday
-  { id: 'tt-mon-1', dayOfWeek: 'Monday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-mon-2', dayOfWeek: 'Monday', timeSlot: '10:45 AM - 11:45 AM', startTime: '10:45', endTime: '11:45', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals', room: 'Lab-1', facultyName: 'Faculty 1' },
-  { id: 'tt-mon-3', dayOfWeek: 'Monday', timeSlot: '12:30 PM - 01:30 PM', startTime: '12:30', endTime: '13:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematics', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-mon-4', dayOfWeek: 'Monday', timeSlot: '02:00 PM - 03:00 PM', startTime: '14:00', endTime: '15:00', subjectId: 'subject-english', subjectCode: 'BCA-104', subjectName: 'English Communication', room: 'CS-102', facultyName: 'Faculty 1' },
-  // Tuesday
-  { id: 'tt-tue-1', dayOfWeek: 'Tuesday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals', room: 'Lab-1', facultyName: 'Faculty 1' },
-  { id: 'tt-tue-2', dayOfWeek: 'Tuesday', timeSlot: '10:45 AM - 11:45 AM', startTime: '10:45', endTime: '11:45', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-tue-3', dayOfWeek: 'Tuesday', timeSlot: '12:30 PM - 01:30 PM', startTime: '12:30', endTime: '13:30', subjectId: 'subject-english', subjectCode: 'BCA-104', subjectName: 'English Communication', room: 'CS-102', facultyName: 'Faculty 1' },
-  { id: 'tt-tue-4', dayOfWeek: 'Tuesday', timeSlot: '02:00 PM - 03:00 PM', startTime: '14:00', endTime: '15:00', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematics', room: 'CS-201', facultyName: 'Faculty 1' },
-  // Wednesday
-  { id: 'tt-wed-1', dayOfWeek: 'Wednesday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematics', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-wed-2', dayOfWeek: 'Wednesday', timeSlot: '10:45 AM - 11:45 AM', startTime: '10:45', endTime: '11:45', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-wed-3', dayOfWeek: 'Wednesday', timeSlot: '12:30 PM - 01:30 PM', startTime: '12:30', endTime: '13:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals', room: 'Lab-1', facultyName: 'Faculty 1' },
-  // Thursday
-  { id: 'tt-thu-1', dayOfWeek: 'Thursday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-thu-2', dayOfWeek: 'Thursday', timeSlot: '10:45 AM - 11:45 AM', startTime: '10:45', endTime: '11:45', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematics', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-thu-3', dayOfWeek: 'Thursday', timeSlot: '12:30 PM - 01:30 PM', startTime: '12:30', endTime: '13:30', subjectId: 'subject-english', subjectCode: 'BCA-104', subjectName: 'English Communication', room: 'CS-102', facultyName: 'Faculty 1' },
-  // Friday
-  { id: 'tt-fri-1', dayOfWeek: 'Friday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals', room: 'Lab-1', facultyName: 'Faculty 1' },
-  { id: 'tt-fri-2', dayOfWeek: 'Friday', timeSlot: '10:45 AM - 11:45 AM', startTime: '10:45', endTime: '11:45', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Faculty 1' },
-  { id: 'tt-fri-3', dayOfWeek: 'Friday', timeSlot: '12:30 PM - 01:30 PM', startTime: '12:30', endTime: '13:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematics', room: 'CS-201', facultyName: 'Faculty 1' },
+  // --- Monday ---
+  { id: 'tt-mon-1', dayOfWeek: 'Monday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-mon-2', dayOfWeek: 'Monday', timeSlot: '10:30 AM - 11:30 AM', startTime: '10:30', endTime: '11:30', subjectId: 'subject-evs', subjectCode: 'BCA-105', subjectName: 'Environmental Studies', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-mon-3', dayOfWeek: 'Monday', timeSlot: '11:30 AM - 12:30 PM', startTime: '11:30', endTime: '12:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematical Foundation (MFCS-1)', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-mon-4', dayOfWeek: 'Monday', timeSlot: '01:30 PM - 02:30 PM', startTime: '13:30', endTime: '14:30', subjectId: 'subject-iks-bca1', subjectCode: 'BCA-106', subjectName: 'Indian Knowledge System', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-mon-5', dayOfWeek: 'Monday', timeSlot: '02:30 PM - 03:30 PM', startTime: '14:30', endTime: '15:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals & Applications', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-mon-6', dayOfWeek: 'Monday', timeSlot: '03:30 PM - 04:30 PM', startTime: '15:30', endTime: '16:30', subjectId: 'subject-audit-1', subjectCode: 'BCA-107', subjectName: 'Audit Course - I (Tutorial)', room: 'CS-201', facultyName: 'Course Instructor' },
+
+  // --- Tuesday ---
+  { id: 'tt-tue-1', dayOfWeek: 'Tuesday', timeSlot: '10:30 AM - 11:30 AM', startTime: '10:30', endTime: '11:30', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-tue-2', dayOfWeek: 'Tuesday', timeSlot: '11:30 AM - 12:30 PM', startTime: '11:30', endTime: '12:30', subjectId: 'subject-english', subjectCode: 'BCA-104', subjectName: 'English Communication', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-tue-3', dayOfWeek: 'Tuesday', timeSlot: '01:30 PM - 03:30 PM', startTime: '13:30', endTime: '15:30', subjectId: 'subject-cfa-lab', subjectCode: 'BCA-102L', subjectName: 'CFA Laboratory', room: 'Lab III', facultyName: 'Course Instructor' },
+
+  // --- Wednesday ---
+  { id: 'tt-wed-1', dayOfWeek: 'Wednesday', timeSlot: '10:30 AM - 12:30 PM', startTime: '10:30', endTime: '12:30', subjectId: 'subject-cfa-lab', subjectCode: 'BCA-102L', subjectName: 'CFA Laboratory', room: 'Lab III', facultyName: 'Course Instructor' },
+  { id: 'tt-wed-2', dayOfWeek: 'Wednesday', timeSlot: '01:30 PM - 02:30 PM', startTime: '13:30', endTime: '14:30', subjectId: 'subject-pst', subjectCode: 'BCA-101', subjectName: 'Problem Solving Techniques', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-wed-3', dayOfWeek: 'Wednesday', timeSlot: '02:30 PM - 03:30 PM', startTime: '14:30', endTime: '15:30', subjectId: 'subject-audit-1', subjectCode: 'BCA-107', subjectName: 'Audit Course - I', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-wed-4', dayOfWeek: 'Wednesday', timeSlot: '03:30 PM - 04:30 PM', startTime: '15:30', endTime: '16:30', subjectId: 'subject-evs', subjectCode: 'BCA-105', subjectName: 'Environmental Studies', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-wed-5', dayOfWeek: 'Wednesday', timeSlot: '04:30 PM - 05:30 PM', startTime: '16:30', endTime: '17:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'MFCS-1 (Tutorial)', room: 'CS-201', facultyName: 'Course Instructor' },
+
+  // --- Thursday ---
+  { id: 'tt-thu-1', dayOfWeek: 'Thursday', timeSlot: '09:30 AM - 10:30 AM', startTime: '09:30', endTime: '10:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals & Applications', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-thu-2', dayOfWeek: 'Thursday', timeSlot: '10:30 AM - 12:30 PM', startTime: '10:30', endTime: '12:30', subjectId: 'subject-pst-lab', subjectCode: 'BCA-101L', subjectName: 'PST Laboratory', room: 'Lab III', facultyName: 'Course Instructor' },
+  { id: 'tt-thu-3', dayOfWeek: 'Thursday', timeSlot: '01:30 PM - 02:30 PM', startTime: '13:30', endTime: '14:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematical Foundation (MFCS-1)', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-thu-4', dayOfWeek: 'Thursday', timeSlot: '02:30 PM - 03:30 PM', startTime: '14:30', endTime: '15:30', subjectId: 'subject-iks-bca1', subjectCode: 'BCA-106', subjectName: 'Indian Knowledge System', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-thu-5', dayOfWeek: 'Thursday', timeSlot: '03:30 PM - 04:30 PM', startTime: '15:30', endTime: '16:30', subjectId: 'subject-english', subjectCode: 'BCA-104', subjectName: 'English Communication (Tutorial)', room: 'CS-201', facultyName: 'Course Instructor' },
+
+  // --- Friday ---
+  { id: 'tt-fri-1', dayOfWeek: 'Friday', timeSlot: '10:30 AM - 12:30 PM', startTime: '10:30', endTime: '12:30', subjectId: 'subject-pst-lab', subjectCode: 'BCA-101L', subjectName: 'PST Laboratory', room: 'Lab III', facultyName: 'Course Instructor' },
+  { id: 'tt-fri-2', dayOfWeek: 'Friday', timeSlot: '01:30 PM - 02:30 PM', startTime: '13:30', endTime: '14:30', subjectId: 'subject-audit-1', subjectCode: 'BCA-107', subjectName: 'Audit Course - I', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-fri-3', dayOfWeek: 'Friday', timeSlot: '02:30 PM - 03:30 PM', startTime: '14:30', endTime: '15:30', subjectId: 'subject-computer-fundamentals', subjectCode: 'BCA-102', subjectName: 'Computer Fundamentals & Applications', room: 'CS-201', facultyName: 'Course Instructor' },
+  { id: 'tt-fri-4', dayOfWeek: 'Friday', timeSlot: '03:30 PM - 04:30 PM', startTime: '15:30', endTime: '16:30', subjectId: 'subject-mathematics', subjectCode: 'BCA-103', subjectName: 'Mathematical Foundation (MFCS-1)', room: 'CS-201', facultyName: 'Course Instructor' },
 ];
 
 export const CANCELLATION_REASONS = [
