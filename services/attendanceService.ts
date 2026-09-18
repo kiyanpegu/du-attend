@@ -1,6 +1,7 @@
 import { OTP_CONFIG } from '@/constants/duAttend';
 import { SEED_IDS } from '@/constants/seedData';
 import { cloudService } from '@/services/cloudService';
+import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
 import type {
     AttendanceFilter,
@@ -412,6 +413,18 @@ export const attendanceService = {
         finalSession.facultyId,
         finalSession.id
       );
+    }
+
+    // Trigger system notification for active attendance
+    try {
+      const db = await storageService.getDatabase();
+      const subj = db.subjects.find((s) => s.id === subjectId);
+      notificationService.notifyAttendanceSessionStarted({
+        subjectName: subj?.name || 'Class',
+        durationMinutes: Math.round(OTP_CONFIG.expiresInSeconds / 60),
+      }).catch(() => {});
+    } catch {
+      // Ignore notification trigger failure
     }
 
     return {

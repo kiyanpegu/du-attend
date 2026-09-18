@@ -11,6 +11,7 @@ import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { cloudService } from '@/services/cloudService';
+import { notificationService } from '@/services/notificationService';
 import { studentService } from '@/services/studentService';
 import type { AttendanceSession, ClassScheduleItem, DayOfWeek, StudentDashboardData, SubjectAttendanceSummary } from '@/types/models';
 import { calculateAttendanceAdvice } from '@/utils/format';
@@ -51,6 +52,9 @@ export default function StudentDashboard() {
     setActiveSessions(liveSessions);
     setTodaySchedule(schedule);
     setLoading(false);
+
+    // Prompt for notification permission on Android 13+ / iOS
+    notificationService.requestPermissionsAsync().catch(() => {});
   }, [router]);
 
   useFocusEffect(

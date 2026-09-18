@@ -2,7 +2,7 @@
   "expo": {
     "name": "DU Attend",
     "slug": "CollegeAttendance",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "duattend",
@@ -19,7 +19,13 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.kiyancantcode.CollegeAttendance",
-      "versionCode": 4
+      "versionCode": 5,
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -49,6 +55,14 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "DU Attend uses your location to verify physical presence inside the classroom during OTP attendance check-ins."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#0066CC",
+          "defaultChannel": "classes"
         }
       ]
     ],

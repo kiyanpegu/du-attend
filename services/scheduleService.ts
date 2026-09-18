@@ -1,5 +1,6 @@
 import { attendanceService } from '@/services/attendanceService';
 import { cloudService } from '@/services/cloudService';
+import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
 import type { ClassScheduleItem, DayOfWeek, ScheduleOverride, ServiceResult } from '@/types/models';
 import { createId } from '@/utils/format';
@@ -126,6 +127,13 @@ export const scheduleService = {
       await cloudService.createScheduleOverride(createdOverride);
     }
 
+    // Trigger system notification for cancellation
+    notificationService.notifyClassCancelled({
+      subjectName: baseItem.subjectName,
+      slotTime: baseItem.timeSlot,
+      reason: reason?.trim(),
+    }).catch(() => {});
+
     return {
       ok: true,
       message: `${baseItem.subjectName} has been marked cancelled. Students have been notified.`,
@@ -204,6 +212,15 @@ export const scheduleService = {
     if (cloudService.isOnline()) {
       await cloudService.createScheduleOverride(createdOverride);
     }
+
+    // Trigger system notification for reschedule
+    notificationService.notifyClassRescheduled({
+      subjectName: baseItem.subjectName,
+      originalTime: baseItem.timeSlot,
+      newDay: newDayOfWeek,
+      newTime: newTimeSlot,
+      room: newRoom?.trim() || baseItem.room,
+    }).catch(() => {});
 
     return {
       ok: true,
