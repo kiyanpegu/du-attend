@@ -18,12 +18,12 @@ export default function StudentLogin() {
 
   const handleLogin = async () => {
     if (!studentId.trim()) {
-      Alert.alert('Required', 'Please enter your Student ID (e.g. BCA001).');
+      Alert.alert('Required', 'Please enter your First Name (e.g. kiyan) or Student ID.');
       return;
     }
 
     if (!password) {
-      Alert.alert('Required', 'Please enter your password.');
+      Alert.alert('Required', 'Please enter your password (first name).');
       return;
     }
 
@@ -34,7 +34,7 @@ export default function StudentLogin() {
       if (result.ok) {
         router.replace('/student-dashboard' as never);
       } else {
-        Alert.alert('Login Failed', result.message || 'Incorrect Student ID or Password.');
+        Alert.alert('Login Failed', result.message || 'Incorrect First Name or Password.');
       }
     } catch {
       Alert.alert('Error', 'An error occurred during login. Please try again.');
@@ -45,15 +45,15 @@ export default function StudentLogin() {
 
   const handleForgotPassword = () => {
     Alert.alert(
-      'Demo Account Details',
-      'For testing, use the preloaded student account:\n\nStudent ID: BCA001\nPassword: student123\n\nIn production, this integrates with university SSO.'
+      'CCSA Student Login Help',
+      'For all enrolled CCSA students:\n\n• Username: Your first name (e.g. "kiyan" or "abhigyan")\n• Password: Your first name itself\n\nYou can also sign in using your Student ID (e.g. "BCA1-053") or demo account ("BCA001" / "student123").'
     );
   };
 
   const handleSupport = () => {
     Alert.alert(
-      'Demo IT Support',
-      'This is an independent demo prototype.\n\nQuick Test Login:\n• ID: BCA001\n• Password: student123\n\nResetting the database in Dev Tools restores default accounts.'
+      'CCSA Student Directory',
+      '314 students across BCA, MCA, and PGDCA are active.\n\nQuick Test Logins:\n• Kiyan: kiyan / kiyan (BCA 1st Sem)\n• Abhigyan: abhigyan / abhigyan (BCA 1st Sem)\n• Demo: BCA001 / student123'
     );
   };
 
@@ -84,33 +84,49 @@ export default function StudentLogin() {
           </View>
           <Text style={styles.title}>Student Sign In</Text>
           <Text style={styles.subtitle}>
-            Enter your student ID to mark live class attendance and view your timetable.
+            Dibrugarh University • Centre for Computer Science & Applications
           </Text>
         </View>
 
-        {/* Demo Auto-Fill Pill */}
-        <TouchableOpacity
-          style={styles.quickFillPill}
-          onPress={() => {
-            setStudentId('BCA001');
-            setPassword('student123');
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Auto-fill Demo Student Credentials"
-          activeOpacity={0.7}
-        >
-          <IconSymbol size={13} name="key.fill" color={APP_COLORS.primaryWarm} />
-          <Text style={styles.quickFillText}>Auto-fill Demo: BCA001 / student123</Text>
-        </TouchableOpacity>
+        {/* Quick-fill helper for Kiyan & Demo */}
+        <View style={styles.quickFillRow}>
+          <TouchableOpacity
+            style={styles.quickFillBadge}
+            onPress={() => {
+              setStudentId('kiyan');
+              setPassword('kiyan');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Auto-fill Kiyan credentials"
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={13} name="person.fill" color={APP_COLORS.primaryWarm} />
+            <Text style={styles.quickFillText}>Quick-fill: kiyan / kiyan</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickFillBadge}
+            onPress={() => {
+              setStudentId('BCA001');
+              setPassword('student123');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Auto-fill Demo Student Credentials"
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={13} name="key.fill" color={APP_COLORS.primaryWarm} />
+            <Text style={styles.quickFillText}>Demo: BCA001</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Floating Form Card */}
         <View style={styles.formCard}>
           <AppInput
-            label="Student ID / Roll No"
-            placeholder="e.g. BCA001"
+            label="First Name or Student ID"
+            placeholder="e.g. kiyan or BCA1-053"
             value={studentId}
             onChangeText={setStudentId}
-            autoCapitalize="characters"
+            autoCapitalize="none"
             autoCorrect={false}
             leftIcon="person.text.rectangle"
           />
@@ -262,6 +278,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 20,
+  },
+  quickFillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+    flexWrap: 'wrap',
+  },
+  quickFillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: APP_COLORS.surface,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: TOKENS.rounded.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 94, 54, 0.3)',
+    ...TOKENS.shadows.subtle,
   },
   quickFillPill: {
     flexDirection: 'row',

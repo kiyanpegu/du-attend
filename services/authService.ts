@@ -22,12 +22,30 @@ export const authService = {
 
     if (!user) {
       const database = await storageService.getDatabase();
-      const normalizedUsername = normalizeCredential(username);
-      user = database.users.find(
-        (item) => item.role === role && item.username.toUpperCase() === normalizedUsername
-      ) ?? null;
+      const normalizedInput = normalizeCredential(username);
+      user = database.users.find((item) => {
+        if (item.role !== role || !item.active) return false;
+        if (item.username.toUpperCase() === normalizedInput) return true;
+        if (item.name.toUpperCase() === normalizedInput) return true;
+        if (role === 'student') {
+          const studentRec = database.students.find((s) => s.userId === item.id && s.active);
+          if (studentRec && studentRec.studentId.toUpperCase() === normalizedInput) return true;
+        }
+        return false;
+      }) ?? null;
 
-      if (!user || !user.active || user.developmentPassword !== password) {
+      if (!user || !user.active) {
+        return {
+          ok: false,
+          message: `Invalid ${role} credentials.`,
+        };
+      }
+
+      const passMatch =
+        user.developmentPassword === password ||
+        user.developmentPassword.toLowerCase() === password.trim().toLowerCase();
+
+      if (!passMatch) {
         return {
           ok: false,
           message: `Invalid ${role} credentials.`,

@@ -71,8 +71,26 @@ async function removeSecureItem(key: string): Promise<void> {
 }
 
 function mergeById<T extends { id: string }>(current: T[], seed: T[]) {
-  const existing = new Set((current ?? []).map((item) => item.id));
-  return [...(current ?? []), ...(seed ?? []).filter((item) => !existing.has(item.id))];
+  const merged: T[] = [];
+  const processed = new Set<string>();
+
+  for (const item of current ?? []) {
+    const seedItem = seed?.find((s) => s.id === item.id);
+    if (seedItem) {
+      merged.push({ ...item, ...seedItem });
+    } else {
+      merged.push(item);
+    }
+    processed.add(item.id);
+  }
+
+  for (const s of seed ?? []) {
+    if (!processed.has(s.id)) {
+      merged.push(s);
+    }
+  }
+
+  return merged;
 }
 
 function mergeSeedData(database: Partial<LocalDatabase>): LocalDatabase {

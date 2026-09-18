@@ -1,3 +1,11 @@
+import {
+  CCSA_ENROLLMENTS,
+  CCSA_PROGRAMMES,
+  CCSA_SEMESTERS,
+  CCSA_STUDENT_USERS,
+  CCSA_STUDENTS,
+  CCSA_SUBJECTS,
+} from '@/constants/ccsaRoster';
 import type { LocalDatabase } from '@/types/models';
 
 const now = new Date('2026-08-23T00:00:00.000Z').toISOString();
@@ -18,13 +26,43 @@ export const SEED_IDS = {
   },
 };
 
-const students = [
+// Legacy demo students for testing compatibility
+const demoStudents = [
   { publicId: 'BCA001', name: 'Student 1', password: 'student123' },
   { publicId: 'BCA002', name: 'Student 2', password: 'student456' },
   { publicId: 'BCA003', name: 'Student 3', password: 'student789' },
   { publicId: 'BCA004', name: 'Student 4', password: 'student321' },
   { publicId: 'BCA005', name: 'Student 5', password: 'student654' },
 ];
+
+const demoUsers = demoStudents.map((student) => ({
+  id: `user-${student.publicId.toLowerCase()}`,
+  role: 'student' as const,
+  name: student.name,
+  username: student.publicId,
+  active: true,
+  developmentPassword: student.password,
+  createdAt: now,
+  updatedAt: now,
+}));
+
+const demoStudentProfiles = demoStudents.map((student) => ({
+  id: `student-${student.publicId.toLowerCase()}`,
+  userId: `user-${student.publicId.toLowerCase()}`,
+  studentId: student.publicId,
+  programmeId: SEED_IDS.programme,
+  semesterId: SEED_IDS.semester,
+  active: true,
+}));
+
+const demoEnrollments = demoStudents.flatMap((student) =>
+  Object.values(SEED_IDS.subjects).map((subjectId) => ({
+    id: `enrollment-${student.publicId.toLowerCase()}-${subjectId}`,
+    studentId: `student-${student.publicId.toLowerCase()}`,
+    subjectId,
+    active: true,
+  }))
+);
 
 export const SEED_DATABASE: LocalDatabase = {
   universities: [
@@ -37,34 +75,14 @@ export const SEED_DATABASE: LocalDatabase = {
     {
       id: SEED_IDS.department,
       universityId: SEED_IDS.university,
-      name: 'Computer Applications',
+      name: 'Centre for Computer Science and Applications',
     },
   ],
-  programmes: [
-    {
-      id: SEED_IDS.programme,
-      departmentId: SEED_IDS.department,
-      name: 'BCA',
-    },
-  ],
-  semesters: [
-    {
-      id: SEED_IDS.semester,
-      programmeId: SEED_IDS.programme,
-      name: 'BCA 1st Semester',
-    },
-  ],
+  programmes: CCSA_PROGRAMMES,
+  semesters: CCSA_SEMESTERS,
   users: [
-    ...students.map((student) => ({
-      id: `user-${student.publicId.toLowerCase()}`,
-      role: 'student' as const,
-      name: student.name,
-      username: student.publicId,
-      active: true,
-      developmentPassword: student.password,
-      createdAt: now,
-      updatedAt: now,
-    })),
+    ...demoUsers,
+    ...CCSA_STUDENT_USERS,
     {
       id: SEED_IDS.facultyUser,
       role: 'faculty',
@@ -86,14 +104,10 @@ export const SEED_DATABASE: LocalDatabase = {
       updatedAt: now,
     },
   ],
-  students: students.map((student) => ({
-    id: `student-${student.publicId.toLowerCase()}`,
-    userId: `user-${student.publicId.toLowerCase()}`,
-    studentId: student.publicId,
-    programmeId: SEED_IDS.programme,
-    semesterId: SEED_IDS.semester,
-    active: true,
-  })),
+  students: [
+    ...demoStudentProfiles,
+    ...CCSA_STUDENTS,
+  ],
   faculties: [
     {
       id: SEED_IDS.faculty,
@@ -102,52 +116,15 @@ export const SEED_DATABASE: LocalDatabase = {
       active: true,
     },
   ],
-  subjects: [
-    {
-      id: SEED_IDS.subjects.pst,
-      code: 'BCA-101',
-      name: 'Problem Solving Techniques',
-      programmeId: SEED_IDS.programme,
-      semesterId: SEED_IDS.semester,
-      active: true,
-    },
-    {
-      id: SEED_IDS.subjects.fundamentals,
-      code: 'BCA-102',
-      name: 'Computer Fundamentals',
-      programmeId: SEED_IDS.programme,
-      semesterId: SEED_IDS.semester,
-      active: true,
-    },
-    {
-      id: SEED_IDS.subjects.mathematics,
-      code: 'BCA-103',
-      name: 'Mathematics',
-      programmeId: SEED_IDS.programme,
-      semesterId: SEED_IDS.semester,
-      active: true,
-    },
-    {
-      id: SEED_IDS.subjects.english,
-      code: 'BCA-104',
-      name: 'English',
-      programmeId: SEED_IDS.programme,
-      semesterId: SEED_IDS.semester,
-      active: true,
-    },
+  subjects: CCSA_SUBJECTS,
+  enrollments: [
+    ...demoEnrollments,
+    ...CCSA_ENROLLMENTS,
   ],
-  enrollments: students.flatMap((student) =>
-    Object.values(SEED_IDS.subjects).map((subjectId) => ({
-      id: `enrollment-${student.publicId.toLowerCase()}-${subjectId}`,
-      studentId: `student-${student.publicId.toLowerCase()}`,
-      subjectId,
-      active: true,
-    }))
-  ),
-  facultyAssignments: Object.values(SEED_IDS.subjects).map((subjectId) => ({
-    id: `assignment-fac001-${subjectId}`,
+  facultyAssignments: CCSA_SUBJECTS.map((subject) => ({
+    id: `assignment-fac001-${subject.id}`,
     facultyId: SEED_IDS.faculty,
-    subjectId,
+    subjectId: subject.id,
     active: true,
   })),
   attendanceSessions: [],
@@ -156,10 +133,13 @@ export const SEED_DATABASE: LocalDatabase = {
 };
 
 export const DEVELOPMENT_CREDENTIALS = {
-  students: students.map((student) => ({
-    id: student.publicId,
-    password: student.password,
-  })),
+  students: [
+    { id: 'kiyan', name: 'Kiyan Pegu', password: 'kiyan' },
+    { id: 'abhigyan', name: 'Abhigyan Konwar', password: 'abhigyan' },
+    { id: 'BCA001', name: 'Demo Student 1', password: 'student123' },
+    { id: 'BCA002', name: 'Demo Student 2', password: 'student456' },
+    { id: 'BCA1-053', name: 'Kiyan Pegu (ID)', password: 'kiyan' },
+  ],
   faculty: [{ id: 'FAC001', password: 'faculty123' }],
   admin: [{ id: 'ADMIN001', password: 'admin123' }],
 };
