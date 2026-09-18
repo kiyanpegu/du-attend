@@ -4,7 +4,7 @@ import { Card } from '@/components/app/Card';
 import { EmptyState } from '@/components/app/EmptyState';
 import { LoadingState } from '@/components/app/LoadingState';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
+import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { facultyService } from '@/services/facultyService';
