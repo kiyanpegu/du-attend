@@ -1,7 +1,6 @@
 import { OTP_CONFIG } from '@/constants/duAttend';
 import { SEED_IDS } from '@/constants/seedData';
 import { cloudService } from '@/services/cloudService';
-import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
 import type {
     AttendanceFilter,

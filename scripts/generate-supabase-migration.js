@@ -148,3 +148,4 @@ CREATE POLICY "Public Read All" ON enrollments FOR SELECT USING (true);
 
 fs.writeFileSync('supabase/fix_sync_and_ccsa.sql', sql);
 console.log('Successfully wrote supabase/fix_sync_and_ccsa.sql, length:', sql.length);
+
