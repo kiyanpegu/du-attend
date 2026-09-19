@@ -320,7 +320,6 @@ async function syncActiveSessionsWithCloud(): Promise<void> {
       // where a freshly started local session hasn't completed cloud write or replication.
       const nowMs = Date.now();
       database.attendanceSessions.forEach((session) => {
-        if (session.status === 'active' && !cloudActiveIds.has(session.id)) {
         const sessionAgeMs = nowMs - new Date(session.startedAt).getTime();
         if (session.status === 'active' && !cloudActiveIds.has(session.id) && sessionAgeMs > 30000) {
           session.status = 'ended';
@@ -580,7 +579,6 @@ export const attendanceService = {
         return;
       }
 
-      if (getSecondsRemaining(allMatchingSession) <= 0) {
       // Allow 30 seconds clock-skew tolerance between faculty and student physical devices
       const remainingWithTolerance =
         Math.ceil((new Date(allMatchingSession.otpExpiresAt).getTime() - Date.now()) / 1000) + 30;

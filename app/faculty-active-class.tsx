@@ -2,7 +2,6 @@ import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
 import { LoadingState } from '@/components/app/LoadingState';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { APP_COLORS, GEOFENCE_CONFIG, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { APP_COLORS, GEOFENCE_CONFIG, OTP_CONFIG, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';

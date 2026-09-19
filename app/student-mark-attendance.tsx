@@ -106,7 +106,6 @@ export default function StudentMarkAttendance() {
       await fetchActive();
     };
     load();
-    const interval = setInterval(load, 4000);
 
     // Instant real-time subscription when faculty starts class
     const unsubscribeCloud = cloudService.subscribeToActiveSessions(() => {
