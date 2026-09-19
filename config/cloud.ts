@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// Environment variables supported by Expo (prefixed with EXPO_PUBLIC_)
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 // Supabase Cloud Project Configuration (with guaranteed inlined fallbacks)
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://xczioqwkdzbqadesbvmt.supabase.co';

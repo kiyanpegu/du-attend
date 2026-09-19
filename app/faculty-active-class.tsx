@@ -2,6 +2,7 @@ import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
 import { LoadingState } from '@/components/app/LoadingState';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { APP_COLORS, GEOFENCE_CONFIG, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { APP_COLORS, GEOFENCE_CONFIG, OTP_CONFIG, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
@@ -119,6 +120,7 @@ export default function FacultyActiveClassScreen() {
     if (result.ok && result.data) {
       setSecondsLeft(attendanceService.getSecondsRemaining(result.data));
       await loadSession();
+      Alert.alert('New OTP Active', 'A new 6-digit OTP has been generated for 60 seconds.');
       Alert.alert(
         'New OTP Active',
         `A new 6-digit OTP has been generated for ${Math.round(OTP_CONFIG.expiresInSeconds / 60)} minutes.`
@@ -331,6 +333,8 @@ export default function FacultyActiveClassScreen() {
         </View>
 
         <View style={styles.syncRow}>
+          <View style={styles.syncDot} />
+          <Text style={styles.syncText}>Realtime sync active (2s auto-refresh)</Text>
           <View style={[styles.syncDot, { backgroundColor: '#10B981' }]} />
           <Text style={styles.syncText}>🟢 Live Cloud Sync Active (Supabase Connected)</Text>
         </View>
@@ -359,6 +363,7 @@ export default function FacultyActiveClassScreen() {
               styles.statusPillText,
               isExpired ? styles.statusTextExpired : isUrgent ? styles.statusTextUrgent : styles.statusTextActive,
             ]}>
+              {isExpired ? 'EXPIRED' : isUrgent ? 'ROTATING SOON' : '60S ROTATION'}
               {isExpired ? 'EXPIRED' : isUrgent ? 'ROTATING SOON' : `${Math.round(OTP_CONFIG.expiresInSeconds / 60)}M WINDOW`}
             </Text>
           </View>
@@ -370,6 +375,7 @@ export default function FacultyActiveClassScreen() {
             <View style={styles.expiredArea}>
               <IconSymbol size={32} name="lock.slash.fill" color={APP_COLORS.danger} />
               <Text style={styles.expiredMainText}>OTP EXPIRED</Text>
+              <Text style={styles.expiredSubText}>Tap rotate below to issue a fresh 60s code</Text>
               <Text style={styles.expiredSubText}>Tap rotate below to issue a fresh verification code</Text>
             </View>
           ) : (
@@ -394,6 +400,7 @@ export default function FacultyActiveClassScreen() {
               <View
                 style={[
                   styles.meterFill,
+                  { width: `${Math.max(0, Math.min(100, (secondsLeft / 60) * 100))}%` },
                   { width: `${Math.max(0, Math.min(100, (secondsLeft / OTP_CONFIG.expiresInSeconds) * 100))}%` },
                   isUrgent && styles.meterFillUrgent,
                 ]}
@@ -408,6 +415,7 @@ export default function FacultyActiveClassScreen() {
                   color={isUrgent ? APP_COLORS.warning : APP_COLORS.textSecondary}
                 />
                 <Text style={[styles.timerSecText, isUrgent && styles.timerSecUrgent]}>
+                  {secondsLeft}s remaining
                   {Math.floor(secondsLeft / 60) > 0 ? `${Math.floor(secondsLeft / 60)}m ${secondsLeft % 60}s remaining` : `${secondsLeft}s remaining`}
                 </Text>
               </View>
