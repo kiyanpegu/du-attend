@@ -315,9 +315,12 @@ async function syncActiveSessionsWithCloud(): Promise<void> {
       });
 
       // 2. Mark any session in local DB as ended if it is NO LONGER active in the cloud!
-      // This prevents stale/ended sessions from persisting on devices as active ghost classes.
+      // Apply a 30-second grace period based on startedAt to prevent race conditions
+      // where a freshly started local session hasn't completed cloud write or replication.
+      const nowMs = Date.now();
       database.attendanceSessions.forEach((session) => {
-        if (session.status === 'active' && !cloudActiveIds.has(session.id)) {
+        const sessionAgeMs = nowMs - new Date(session.startedAt).getTime();
+        if (session.status === 'active' && !cloudActiveIds.has(session.id) && sessionAgeMs > 30000) {
           session.status = 'ended';
           session.endedAt = session.endedAt || new Date().toISOString();
         }
@@ -475,7 +478,7 @@ export const attendanceService = {
 
     return {
       ok: true,
-      message: 'New OTP generated (valid for 60 seconds).',
+      message: `New OTP generated (valid for ${Math.round(OTP_CONFIG.expiresInSeconds / 60)} minutes).`,
       data: finalSession,
     };
   },
@@ -574,7 +577,10 @@ export const attendanceService = {
         return;
       }
 
-      if (getSecondsRemaining(allMatchingSession) <= 0) {
+      // Allow 30 seconds clock-skew tolerance between faculty and student physical devices
+      const remainingWithTolerance =
+        Math.ceil((new Date(allMatchingSession.otpExpiresAt).getTime() - Date.now()) / 1000) + 30;
+      if (remainingWithTolerance <= 0) {
         recordFailedAttempt(studentUserId);
         errorMessage = 'OTP has expired. Ask your faculty to regenerate it.';
         return;

@@ -16,7 +16,7 @@ export const ATTENDANCE_THRESHOLDS = {
 
 export const OTP_CONFIG = {
   digits: 6,
-  expiresInSeconds: 60,
+  expiresInSeconds: 300, // 5 minutes for stable physical classroom verification
 };
 
 export const GEOFENCE_CONFIG = {

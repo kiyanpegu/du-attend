@@ -66,6 +66,16 @@ export const cloudService = {
     return isCloudConfigured() && supabase !== null;
   },
 
+  async checkConnectivity(): Promise<boolean> {
+    if (!this.isOnline() || !supabase) return false;
+    try {
+      const { error } = await supabase.from('attendance_sessions').select('id').limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
   // --------------------------------------------------------------------------
   // Authentication & Users
   // --------------------------------------------------------------------------

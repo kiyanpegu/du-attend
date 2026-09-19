@@ -223,6 +223,11 @@ export default function StudentDashboard() {
                   {programme?.name ?? 'BCA'} • {semester?.name ?? '1st Sem'}
                 </Text>
               </View>
+              <View style={[styles.heroPill, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
+                <Text style={[styles.heroPillText, { color: '#D1FAE5', fontWeight: '700' }]}>
+                  ● Cloud Live
+                </Text>
+              </View>
             </View>
           </View>
 

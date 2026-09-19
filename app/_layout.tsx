@@ -19,6 +19,7 @@ import { authService } from '@/services/authService';
 import { cloudService } from '@/services/cloudService';
 import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
+import * as Updates from 'expo-updates';
 
 // Prevent splash screen auto-hide until ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -37,6 +38,26 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    // Check for Over-The-Air (OTA) updates on launch and reload immediately if a new bundle is published
+    async function checkOtaUpdates() {
+      if (__DEV__ || !Updates.isEnabled) return;
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          const fetchResult = await Updates.fetchUpdateAsync();
+          if (fetchResult.isNew) {
+            await Updates.reloadAsync();
+          }
+        }
+      } catch {
+        // Fail quietly if offline or network unavailable
+      }
+    }
+
+    checkOtaUpdates();
+  }, []);
 
   useEffect(() => {
     // Initialize notification channels and listener

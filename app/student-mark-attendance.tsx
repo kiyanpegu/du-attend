@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS, GEOFENCE_CONFIG, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
+import { cloudService } from '@/services/cloudService';
 import { GeofenceResult, locationService } from '@/services/locationService';
 import { subjectService } from '@/services/subjectService';
 import type { AttendanceSession, Subject } from '@/types/models';
@@ -105,9 +106,18 @@ export default function StudentMarkAttendance() {
       await fetchActive();
     };
     load();
-    const interval = setInterval(load, 4000);
+
+    // Instant real-time subscription when faculty starts class
+    const unsubscribeCloud = cloudService.subscribeToActiveSessions(() => {
+      if (mounted) {
+        load();
+      }
+    });
+
+    const interval = setInterval(load, 3000);
     return () => {
       mounted = false;
+      unsubscribeCloud();
       clearInterval(interval);
     };
   }, [fetchActive]);
