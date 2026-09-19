@@ -321,4 +321,29 @@ export const cloudService = {
       return false;
     }
   },
+
+  subscribeToScheduleOverrides(onOverrideChanged: () => void): () => void {
+    if (!this.isOnline() || !supabase) return () => {};
+
+    try {
+      const channel = supabase
+        .channel('public:schedule_overrides')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'schedule_overrides' },
+          () => {
+            onOverrideChanged();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        if (supabase) {
+          supabase.removeChannel(channel);
+        }
+      };
+    } catch {
+      return () => {};
+    }
+  },
 };

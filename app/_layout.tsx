@@ -14,7 +14,11 @@ import { StatusBar } from 'react-native';
 import 'react-native-reanimated';
 
 import { ErrorBoundary } from '@/components/app/ErrorBoundary';
+import { attendanceService } from '@/services/attendanceService';
+import { authService } from '@/services/authService';
+import { cloudService } from '@/services/cloudService';
 import { notificationService } from '@/services/notificationService';
+import { storageService } from '@/services/storageService';
 
 // Prevent splash screen auto-hide until ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -51,6 +55,78 @@ export default function RootLayout() {
 
     return () => {
       subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Listen for live attendance broadcasts and schedule overrides from Supabase
+    const notifiedSessions = new Set<string>();
+    const notifiedOverrides = new Set<string>();
+
+    const checkCloudAlerts = async () => {
+      try {
+        const user = await authService.getActiveUser();
+        if (!user || user.role !== 'student') return;
+
+        // 1. Check live sessions for this student
+        const liveSessions = await attendanceService.getActiveSessionsForStudent(user.id);
+        for (const session of liveSessions) {
+          if (!notifiedSessions.has(session.id) && attendanceService.getSecondsRemaining(session) > 0) {
+            notifiedSessions.add(session.id);
+            const db = await storageService.getDatabase();
+            const subject = db.subjects.find((s) => s.id === session.subjectId);
+            await notificationService.notifyAttendanceSessionStarted({
+              subjectName: subject?.name || 'Class',
+              durationMinutes: Math.round(attendanceService.getSecondsRemaining(session) / 60) || 10,
+            });
+          }
+        }
+
+        // 2. Check schedule overrides (cancellations/reschedules)
+        if (cloudService.isOnline()) {
+          const overrides = await cloudService.getActiveScheduleOverrides();
+          for (const ov of overrides) {
+            if (!notifiedOverrides.has(ov.id)) {
+              notifiedOverrides.add(ov.id);
+              const db = await storageService.getDatabase();
+              const subject = db.subjects.find((s) => s.id === ov.subjectId);
+              const subjectName = subject?.name || 'Lecture';
+              if (ov.action === 'cancelled') {
+                await notificationService.notifyClassCancelled({
+                  subjectName,
+                  slotTime: ov.originalTimeSlot,
+                  reason: ov.reason,
+                });
+              } else if (ov.action === 'rescheduled') {
+                await notificationService.notifyClassRescheduled({
+                  subjectName,
+                  originalTime: ov.originalTimeSlot,
+                  newDay: ov.newDayOfWeek || '',
+                  newTime: ov.newTimeSlot || '',
+                  room: ov.newRoom,
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // Defensive check — never interrupt app UI
+      }
+    };
+
+    checkCloudAlerts();
+
+    // Subscribe to realtime changes
+    const unsubSessions = cloudService.subscribeToActiveSessions(checkCloudAlerts);
+    const unsubOverrides = cloudService.subscribeToScheduleOverrides(checkCloudAlerts);
+
+    // Heartbeat poll every 4 seconds as reliable fallback
+    const interval = setInterval(checkCloudAlerts, 4000);
+
+    return () => {
+      unsubSessions();
+      unsubOverrides();
+      clearInterval(interval);
     };
   }, []);
 

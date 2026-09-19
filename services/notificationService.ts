@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 // Configure how notifications appear when the app is in foreground
 Notifications.setNotificationHandler({

@@ -415,18 +415,6 @@ export const attendanceService = {
       );
     }
 
-    // Trigger system notification for active attendance
-    try {
-      const db = await storageService.getDatabase();
-      const subj = db.subjects.find((s) => s.id === subjectId);
-      notificationService.notifyAttendanceSessionStarted({
-        subjectName: subj?.name || 'Class',
-        durationMinutes: Math.round(OTP_CONFIG.expiresInSeconds / 60),
-      }).catch(() => {});
-    } catch {
-      // Ignore notification trigger failure
-    }
-
     return {
       ok: true,
       message: 'Attendance session started successfully.',
