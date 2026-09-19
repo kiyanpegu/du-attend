@@ -1,5 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+
+import { STORAGE_KEYS } from '@/constants/duAttend';
+import { createId } from '@/utils/format';
 
 // Configure how notifications appear when the app is in foreground
 Notifications.setNotificationHandler({
@@ -17,6 +21,33 @@ export const NOTIFICATION_CHANNELS = {
   ATTENDANCE: 'attendance',
   ALERTS: 'alerts',
 } as const;
+
+export type AppNotificationType =
+  | 'live_attendance'
+  | 'class_cancelled'
+  | 'class_rescheduled'
+  | 'attendance_shortage'
+  | 'system';
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  title: string;
+  body: string;
+  timestamp: string; // ISO string
+  read: boolean;
+  data?: {
+    url?: string;
+    subjectName?: string;
+    slotTime?: string;
+    newDay?: string;
+    newTime?: string;
+    percentage?: number;
+    classesNeeded?: number;
+    sessionId?: string;
+    [key: string]: any;
+  };
+}
 
 class NotificationService {
   private initialized = false;
@@ -92,6 +123,97 @@ class NotificationService {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // In-App Notification History Persistence
+  // --------------------------------------------------------------------------
+
+  async saveNotification(entry: {
+    type: AppNotificationType;
+    title: string;
+    body: string;
+    data?: Record<string, any>;
+  }): Promise<AppNotification> {
+    try {
+      const existing = await this.getNotifications();
+      const newNotification: AppNotification = {
+        id: createId('notif'),
+        type: entry.type,
+        title: entry.title,
+        body: entry.body,
+        timestamp: new Date().toISOString(),
+        read: false,
+        data: entry.data,
+      };
+
+      // Keep up to 100 recent notifications
+      const updated = [newNotification, ...existing].slice(0, 100);
+      await AsyncStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(updated));
+      return newNotification;
+    } catch (err) {
+      console.warn('Failed to save notification to storage:', err);
+      return {
+        id: createId('notif'),
+        type: entry.type,
+        title: entry.title,
+        body: entry.body,
+        timestamp: new Date().toISOString(),
+        read: false,
+        data: entry.data,
+      };
+    }
+  }
+
+  async getNotifications(): Promise<AppNotification[]> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.notifications);
+      if (!raw) return [];
+      return JSON.parse(raw) as AppNotification[];
+    } catch {
+      return [];
+    }
+  }
+
+  async getUnreadCount(): Promise<number> {
+    try {
+      const notifications = await this.getNotifications();
+      return notifications.filter((n) => !n.read).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  async markAsRead(notificationId: string): Promise<void> {
+    try {
+      const existing = await this.getNotifications();
+      const updated = existing.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
+      await AsyncStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to mark notification as read:', err);
+    }
+  }
+
+  async markAllAsRead(): Promise<void> {
+    try {
+      const existing = await this.getNotifications();
+      const updated = existing.map((n) => ({ ...n, read: true }));
+      await AsyncStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to mark all notifications as read:', err);
+    }
+  }
+
+  async clearAll(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.notifications);
+    } catch (err) {
+      console.warn('Failed to clear notifications:', err);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Scheduled System & Push Notifications
+  // --------------------------------------------------------------------------
+
   /**
    * Trigger immediate system notification when a class lecture is cancelled.
    */
@@ -103,11 +225,25 @@ class NotificationService {
     try {
       await this.initialize();
       const reasonText = params.reason ? ` (${params.reason})` : '';
+      const title = `❌ Class Cancelled: ${params.subjectName}`;
+      const body = `The ${params.slotTime} lecture has been cancelled${reasonText}. This slot is excluded from attendance calculation.`;
+
+      // Persist to in-app notification history
+      await this.saveNotification({
+        type: 'class_cancelled',
+        title,
+        body,
+        data: {
+          url: '/student-schedule',
+          subjectName: params.subjectName,
+          slotTime: params.slotTime,
+        },
+      });
 
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
-          title: `❌ Class Cancelled: ${params.subjectName}`,
-          body: `The ${params.slotTime} lecture has been cancelled${reasonText}. This slot is excluded from attendance calculation.`,
+          title,
+          body,
           data: {
             url: '/student-schedule',
             type: 'class_cancelled',
@@ -142,11 +278,26 @@ class NotificationService {
     try {
       await this.initialize();
       const roomText = params.room ? ` in ${params.room}` : '';
+      const title = `🗓️ Class Rescheduled: ${params.subjectName}`;
+      const body = `Originally at ${params.originalTime}, moved to ${params.newDay} at ${params.newTime}${roomText}.`;
+
+      // Persist to in-app notification history
+      await this.saveNotification({
+        type: 'class_rescheduled',
+        title,
+        body,
+        data: {
+          url: '/student-schedule',
+          subjectName: params.subjectName,
+          newDay: params.newDay,
+          newTime: params.newTime,
+        },
+      });
 
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
-          title: `🗓️ Class Rescheduled: ${params.subjectName}`,
-          body: `Originally at ${params.originalTime}, moved to ${params.newDay} at ${params.newTime}${roomText}.`,
+          title,
+          body,
           data: {
             url: '/student-schedule',
             type: 'class_rescheduled',
@@ -176,20 +327,36 @@ class NotificationService {
     subjectName: string;
     room?: string;
     durationMinutes?: number;
+    sessionId?: string;
   }): Promise<string | null> {
     try {
       await this.initialize();
       const roomText = params.room ? ` in ${params.room}` : '';
       const durationText = params.durationMinutes ? ` (${params.durationMinutes} min window)` : '';
+      const title = `⚡ Live Attendance: ${params.subjectName}`;
+      const body = `Check-in is now OPEN${roomText}${durationText}. Enter classroom OTP to mark presence!`;
+
+      // Persist to in-app notification history
+      await this.saveNotification({
+        type: 'live_attendance',
+        title,
+        body,
+        data: {
+          url: '/student-mark-attendance',
+          subjectName: params.subjectName,
+          sessionId: params.sessionId,
+        },
+      });
 
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
-          title: `⚡ Live Attendance: ${params.subjectName}`,
-          body: `Check-in is now OPEN${roomText}${durationText}. Enter classroom OTP to mark presence!`,
+          title,
+          body,
           data: {
             url: '/student-mark-attendance',
             type: 'live_attendance',
             subjectName: params.subjectName,
+            sessionId: params.sessionId,
           },
           sound: true,
           priority: Notifications.AndroidNotificationPriority.MAX,
@@ -216,10 +383,26 @@ class NotificationService {
   }): Promise<string | null> {
     try {
       await this.initialize();
+      const title = `⚠️ Attendance Shortage Warning: ${params.subjectName}`;
+      const body = `Your attendance is ${params.percentage.toFixed(1)}% (below 75% required). Attend next ${params.classesNeeded} class(es) to recover.`;
+
+      // Persist to in-app notification history
+      await this.saveNotification({
+        type: 'attendance_shortage',
+        title,
+        body,
+        data: {
+          url: '/student-subjects',
+          subjectName: params.subjectName,
+          percentage: params.percentage,
+          classesNeeded: params.classesNeeded,
+        },
+      });
+
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
-          title: `⚠️ Attendance Shortage Warning: ${params.subjectName}`,
-          body: `Your attendance is ${params.percentage.toFixed(1)}% (below 75% required). Attend next ${params.classesNeeded} class(es) to recover.`,
+          title,
+          body,
           data: {
             url: '/student-subjects',
             type: 'attendance_shortage',

@@ -1,6 +1,7 @@
 import { AppScreen } from '@/components/app/AppScreen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS, APP_IDENTITY, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
+import { authService } from '@/services/authService';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -11,6 +12,8 @@ export default function WelcomeScreen() {
   const [fadeAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    let isMounted = true;
+
     // Fade in
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -18,13 +21,42 @@ export default function WelcomeScreen() {
       useNativeDriver: true,
     }).start();
 
-    // After 2.2 seconds, hide splash
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2200);
+    const checkAutoLogin = async () => {
+      try {
+        const session = await authService.getCurrentSession();
+        if (session && session.userId && session.role) {
+          const user = await authService.getCurrentUser();
+          if (user && isMounted) {
+            // Valid remembered session found! Auto-route directly to dashboard
+            if (session.role === 'student') {
+              router.replace('/student-dashboard' as never);
+              return;
+            } else if (session.role === 'faculty') {
+              router.replace('/faculty-dashboard' as never);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Auto-login check error:', err);
+      }
 
-    return () => clearTimeout(timer);
-  }, [fadeAnim]);
+      // No active session — hide splash after brief brand presentation
+      if (isMounted) {
+        setTimeout(() => {
+          if (isMounted) {
+            setShowSplash(false);
+          }
+        }, 1200);
+      }
+    };
+
+    checkAutoLogin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fadeAnim, router]);
 
   if (showSplash) {
     return (

@@ -316,7 +316,7 @@ export default function FacultyScheduleScreen() {
             onPress={() => setFilterMode('my')}
           >
             <Text style={[styles.filterSegmentText, filterMode === 'my' && styles.filterSegmentTextActive]}>
-              My Assigned Classes
+              My Classes
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -324,7 +324,7 @@ export default function FacultyScheduleScreen() {
             onPress={() => setFilterMode('all')}
           >
             <Text style={[styles.filterSegmentText, filterMode === 'all' && styles.filterSegmentTextActive]}>
-              All Department Classes
+              All Classes
             </Text>
           </TouchableOpacity>
         </View>
@@ -435,9 +435,9 @@ export default function FacultyScheduleScreen() {
                   </View>
                 )}
 
-                {/* Actions Row (Available for faculty's assigned courses) */}
+                {/* Actions Container (Available for faculty's assigned courses) */}
                 {isMine && (
-                  <View style={styles.cardActionsRow}>
+                  <View style={styles.cardActionsContainer}>
                     {/* Restore Action if already modified */}
                     {(isCancelled || isRescheduledAway) && item.overrideId ? (
                       <AppButton
@@ -450,37 +450,38 @@ export default function FacultyScheduleScreen() {
                       />
                     ) : (
                       <>
-                        {/* Start Attendance Shortcut if today and active */}
+                        {/* Row 1: Start Attendance Shortcut if today and active */}
                         {isSelectedDayToday && !isCancelled && (
                           <AppButton
-                            title={isLive ? 'Active Class' : 'Start Attendance'}
+                            title={isLive ? 'Active Class Live' : 'Start Attendance'}
                             onPress={() => handleStartAttendance(item.subjectId)}
-                            variant={isLive ? 'primary' : 'secondary'}
+                            variant={isLive ? 'primary' : 'primary'}
                             size="small"
                             icon={isLive ? 'arrow.up.right' : 'play.fill'}
-                            style={styles.actionBtnHalf}
+                            style={styles.actionBtnFull}
                           />
                         )}
 
-                        {/* Reschedule Button */}
-                        <AppButton
-                          title="Reschedule"
-                          onPress={() => openRescheduleModal(item)}
-                          variant="secondary"
-                          size="small"
-                          icon="calendar.badge.clock"
-                          style={isSelectedDayToday ? styles.actionBtnQuarter : styles.actionBtnHalf}
-                        />
+                        {/* Row 2: Secondary actions (Reschedule & Cancel side-by-side with no wrapping) */}
+                        <View style={styles.cardSecondaryActionsRow}>
+                          <AppButton
+                            title="Reschedule"
+                            onPress={() => openRescheduleModal(item)}
+                            variant="secondary"
+                            size="small"
+                            icon="calendar.badge.clock"
+                            style={styles.actionBtnHalf}
+                          />
 
-                        {/* Cancel Button */}
-                        <AppButton
-                          title="Cancel"
-                          onPress={() => openCancelModal(item)}
-                          variant="secondary"
-                          size="small"
-                          icon="xmark.circle"
-                          style={isSelectedDayToday ? styles.actionBtnQuarter : styles.actionBtnHalf}
-                        />
+                          <AppButton
+                            title="Cancel Class"
+                            onPress={() => openCancelModal(item)}
+                            variant="secondary"
+                            size="small"
+                            icon="xmark.circle"
+                            style={styles.actionBtnHalf}
+                          />
+                        </View>
                       </>
                     )}
                   </View>
@@ -1026,6 +1027,18 @@ const styles = StyleSheet.create({
     color: APP_COLORS.safeText,
     fontWeight: '600',
     flex: 1,
+  },
+  cardActionsContainer: {
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.border,
+  },
+  cardSecondaryActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   cardActionsRow: {
     flexDirection: 'row',

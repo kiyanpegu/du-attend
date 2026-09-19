@@ -116,6 +116,22 @@ export const cloudService = {
     }
   },
 
+  async getSessionsForFaculty(facultyId: string): Promise<AttendanceSession[]> {
+    if (!this.isOnline() || !supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('attendance_sessions')
+        .select('*')
+        .eq('faculty_id', facultyId)
+        .order('started_at', { ascending: false });
+
+      if (error || !data) return [];
+      return data.map(toSessionModel);
+    } catch {
+      return [];
+    }
+  },
+
   async createSession(session: AttendanceSession): Promise<boolean> {
     if (!this.isOnline() || !supabase) return false;
     try {

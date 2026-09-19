@@ -479,7 +479,6 @@ export const attendanceService = {
 
     return {
       ok: true,
-      message: 'New OTP generated (valid for 60 seconds).',
       message: `New OTP generated (valid for ${Math.round(OTP_CONFIG.expiresInSeconds / 60)} minutes).`,
       data: finalSession,
     };
@@ -863,11 +862,32 @@ export const attendanceService = {
   },
 
   async getFacultySessionReports(facultyUserId: string) {
-    const database = await storageService.getDatabase();
+    let database = await storageService.getDatabase();
     const faculty = database.faculties.find((item) => item.userId === facultyUserId && item.active);
 
     if (!faculty) {
       return [];
+    }
+
+    if (cloudService.isOnline()) {
+      try {
+        const cloudSessions = await cloudService.getSessionsForFaculty(faculty.id);
+        if (cloudSessions.length > 0) {
+          await storageService.updateDatabase((db) => {
+            cloudSessions.forEach((cSess) => {
+              const idx = db.attendanceSessions.findIndex((s) => s.id === cSess.id);
+              if (idx >= 0) {
+                db.attendanceSessions[idx] = cSess;
+              } else {
+                db.attendanceSessions.push(cSess);
+              }
+            });
+          });
+          database = await storageService.getDatabase();
+        }
+      } catch {
+        // Fallback to local
+      }
     }
 
     return database.attendanceSessions

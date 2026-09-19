@@ -7,7 +7,7 @@ import type { AuthSession, Role, ServiceResult, User } from '@/types/models';
 import { normalizeCredential } from '@/utils/format';
 
 export const authService = {
-  async login(role: Role, username: string, password: string): Promise<ServiceResult<AuthSession>> {
+  async login(role: Role, username: string, password: string, rememberMe = true): Promise<ServiceResult<AuthSession>> {
     let user: User | null = null;
 
     if (cloudService.isOnline()) {
@@ -61,6 +61,15 @@ export const authService = {
 
     await storageService.setSecureItem(STORAGE_KEYS.authSession, JSON.stringify(session));
 
+    if (rememberMe) {
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.rememberMe,
+        JSON.stringify({ role, username: user.username, enabled: true })
+      );
+    } else {
+      await AsyncStorage.removeItem(STORAGE_KEYS.rememberMe);
+    }
+
     if (role === 'student') {
       await AsyncStorage.setItem(STORAGE_KEYS.legacyStudentId, user.username.toUpperCase());
     } else {
@@ -77,6 +86,16 @@ export const authService = {
   async logout() {
     await storageService.removeSecureItem(STORAGE_KEYS.authSession);
     await AsyncStorage.removeItem(STORAGE_KEYS.legacyStudentId);
+  },
+
+  async getRememberedCredential(): Promise<{ role: Role; username: string; enabled: boolean } | null> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.rememberMe);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   },
 
   async getCurrentSession(): Promise<AuthSession | null> {

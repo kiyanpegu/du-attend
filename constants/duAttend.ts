@@ -31,6 +31,8 @@ export const GEOFENCE_CONFIG = {
 export const STORAGE_KEYS = {
   database: 'duAttendDatabase',
   authSession: 'duAttendAuthSession',
+  notifications: 'duAttendNotifications',
+  rememberMe: 'duAttendRememberMe',
   legacyStudentId: 'loggedInStudentId',
   legacyAttendanceData: 'attendanceData',
   legacyAttendanceMigrated: 'duAttendLegacyAttendanceMigrated',

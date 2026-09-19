@@ -2,7 +2,7 @@ import { ATTENDANCE_THRESHOLDS } from '@/constants/duAttend';
 import type { AttendanceStanding } from '@/types/models';
 import * as Crypto from 'expo-crypto';
 
-export function createId(prefix: string) {
+export function createId(prefix: string = 'id') {
   try {
     const bytes = Crypto.getRandomValues(new Uint8Array(4));
     const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');

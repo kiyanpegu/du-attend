@@ -28,6 +28,7 @@ export default function StudentDashboard() {
   const [activeSessions, setActiveSessions] = useState<AttendanceSession[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<{ day: DayOfWeek; items: ClassScheduleItem[]; isWeekend: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const loadData = useCallback(async () => {
     const user = await authService.getActiveUser();
@@ -37,10 +38,11 @@ export default function StudentDashboard() {
       return;
     }
 
-    const [dashboard, liveSessions, schedule] = await Promise.all([
+    const [dashboard, liveSessions, schedule, unread] = await Promise.all([
       studentService.getDashboard(user.id),
       attendanceService.getActiveSessionsForStudent(user.id),
       studentService.getTodaySchedule(user.id),
+      notificationService.getUnreadCount(),
     ]);
 
     if (!dashboard) {
@@ -51,6 +53,7 @@ export default function StudentDashboard() {
     setData(dashboard);
     setActiveSessions(liveSessions);
     setTodaySchedule(schedule);
+    setUnreadNotifications(unread);
     setLoading(false);
 
     // Prompt for notification permission on Android 13+ / iOS
@@ -138,6 +141,14 @@ export default function StudentDashboard() {
       iconColor: APP_COLORS.categoryText,
     },
     {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: 'bell.fill',
+      route: '/notifications',
+      bgTint: '#EEF2FF',
+      iconColor: '#3B82F6',
+    },
+    {
       id: 'history',
       label: 'History',
       icon: 'clock.fill',
@@ -197,13 +208,26 @@ export default function StudentDashboard() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.heroProfileBtn}
-              onPress={() => router.push('/student-profile' as never)}
-              activeOpacity={0.8}
-            >
-              <IconSymbol size={18} name="person.fill" color="#FFFFFF" />
-            </TouchableOpacity>
+            <View style={styles.heroActionsRow}>
+              <TouchableOpacity
+                style={styles.heroProfileBtn}
+                onPress={() => router.push('/notifications' as never)}
+                activeOpacity={0.8}
+                accessibilityLabel="Notifications"
+              >
+                <IconSymbol size={18} name="bell.fill" color="#FFFFFF" />
+                {unreadNotifications > 0 && <View style={styles.unreadBadgeDot} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.heroProfileBtn}
+                onPress={() => router.push('/student-profile' as never)}
+                activeOpacity={0.8}
+                accessibilityLabel="My Profile"
+              >
+                <IconSymbol size={18} name="person.fill" color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Welcome Greeting & Student Identity */}
@@ -612,6 +636,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  heroActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unreadBadgeDot: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FF552E',
   },
   heroGreetingArea: {
     marginBottom: 16,

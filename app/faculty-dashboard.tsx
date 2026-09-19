@@ -8,6 +8,7 @@ import { APP_COLORS, TOKENS } from '@/constants/duAttend';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { facultyService } from '@/services/facultyService';
+import { notificationService } from '@/services/notificationService';
 import { scheduleService } from '@/services/scheduleService';
 import type { ClassScheduleItem, DayOfWeek, FacultyDashboardData, Subject } from '@/types/models';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ export default function FacultyDashboard() {
   const router = useRouter();
   const [data, setData] = useState<FacultyDashboardData | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<{ day: DayOfWeek; items: ClassScheduleItem[]; isWeekend: boolean } | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -28,9 +30,10 @@ export default function FacultyDashboard() {
       return;
     }
 
-    const [dashboard, sched] = await Promise.all([
+    const [dashboard, sched, unread] = await Promise.all([
       facultyService.getDashboard(user.id),
       scheduleService.getTodaySchedule(user.id, 'faculty'),
+      notificationService.getUnreadCount(),
     ]);
 
     if (!dashboard) {
@@ -40,6 +43,7 @@ export default function FacultyDashboard() {
 
     setData(dashboard);
     setTodaySchedule(sched);
+    setUnreadNotifications(unread);
     setLoading(false);
   }, [router]);
 
@@ -147,14 +151,25 @@ export default function FacultyDashboard() {
             <Text style={styles.portalTag}>FACULTY PORTAL</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.signOutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-          accessibilityLabel="Sign out"
-        >
-          <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color={APP_COLORS.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.topRightActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/notifications' as never)}
+            activeOpacity={0.7}
+            accessibilityLabel="Notifications"
+          >
+            <IconSymbol size={18} name="bell.fill" color={APP_COLORS.textSecondary} />
+            {unreadNotifications > 0 && <View style={styles.unreadBadgeDot} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.signOutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            accessibilityLabel="Sign out"
+          >
+            <IconSymbol size={18} name="rectangle.portrait.and.arrow.right" color={APP_COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Faculty Identity & Welcome Context */}
@@ -242,7 +257,9 @@ export default function FacultyDashboard() {
       {todaySchedule && todaySchedule.items.length > 0 && (
         <View style={styles.schedulePreviewSection}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeading}>TODAY'S TEACHING SCHEDULE ({todaySchedule.day.toUpperCase()})</Text>
+            <Text style={[styles.sectionHeading, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
+              TODAY'S SCHEDULE ({todaySchedule.day.toUpperCase()})
+            </Text>
             <TouchableOpacity onPress={() => router.push('/faculty-schedule' as never)}>
               <Text style={styles.viewAllLink}>Manage Schedule →</Text>
             </TouchableOpacity>
@@ -271,7 +288,7 @@ export default function FacultyDashboard() {
                   <View style={styles.slotInfoWrap}>
                     <Text
                       style={[styles.slotSubject, isCancelled && styles.textStrikethrough]}
-                      numberOfLines={1}
+                      numberOfLines={2}
                     >
                       {slot.subjectName}
                     </Text>
@@ -369,6 +386,21 @@ export default function FacultyDashboard() {
       </View>
 
       <View style={styles.modulesGrid}>
+        <TouchableOpacity
+          style={styles.moduleCard}
+          onPress={() => router.push('/notifications' as never)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.moduleIconWrap, { backgroundColor: '#EEF2FF' }]}>
+            <IconSymbol size={20} name="bell.fill" color="#3B82F6" />
+          </View>
+          <View style={styles.moduleTextWrap}>
+            <Text style={styles.moduleTitle}>Notifications & Alerts</Text>
+            <Text style={styles.moduleSubtitle}>Review schedule updates and alerts</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={APP_COLORS.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.moduleCard}
           onPress={() => router.push('/faculty-schedule' as never)}
@@ -488,6 +520,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: APP_COLORS.categoryText,
     letterSpacing: 0.8,
+  },
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: APP_COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderSubtle,
+    position: 'relative',
+  },
+  unreadBadgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: APP_COLORS.primary,
   },
   signOutBtn: {
     width: 40,

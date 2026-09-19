@@ -236,22 +236,23 @@ export const scheduleService = {
     facultyUserId: string,
     overrideId: string
   ): Promise<ServiceResult<undefined>> {
-    const database = await storageService.getDatabase();
-    const override = database.scheduleOverrides.find((o) => o.id === overrideId && o.active);
-
-    if (!override) {
-      return { ok: false, message: 'Active schedule override not found.' };
-    }
+    let overrideFound = false;
 
     await storageService.updateDatabase((db) => {
       const target = db.scheduleOverrides.find((o) => o.id === overrideId);
       if (target) {
         target.active = false;
+        overrideFound = true;
       }
     });
 
     if (cloudService.isOnline()) {
       await cloudService.deactivateScheduleOverride(overrideId);
+      overrideFound = true;
+    }
+
+    if (!overrideFound) {
+      return { ok: false, message: 'Active schedule override not found.' };
     }
 
     return {
@@ -272,18 +273,26 @@ export const scheduleService = {
     if (cloudService.isOnline()) {
       try {
         const cloudOverrides = await cloudService.getActiveScheduleOverrides();
-        if (cloudOverrides.length > 0) {
-          await storageService.updateDatabase((db) => {
-            cloudOverrides.forEach((cOverride) => {
-              const idx = db.scheduleOverrides.findIndex((o) => o.id === cOverride.id);
-              if (idx >= 0) {
-                db.scheduleOverrides[idx] = cOverride;
-              } else {
-                db.scheduleOverrides.push(cOverride);
-              }
-            });
+        const cloudActiveIds = new Set(cloudOverrides.map((o) => o.id));
+
+        await storageService.updateDatabase((db) => {
+          // 1. Upsert active overrides from cloud into local DB
+          cloudOverrides.forEach((cOverride) => {
+            const idx = db.scheduleOverrides.findIndex((o) => o.id === cOverride.id);
+            if (idx >= 0) {
+              db.scheduleOverrides[idx] = cOverride;
+            } else {
+              db.scheduleOverrides.push(cOverride);
+            }
           });
-        }
+
+          // 2. Mark any local override as inactive if it is NO LONGER active in cloud!
+          db.scheduleOverrides.forEach((o) => {
+            if (o.active && !cloudActiveIds.has(o.id)) {
+              o.active = false;
+            }
+          });
+        });
       } catch {
         // Fallback to local
       }

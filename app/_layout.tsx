@@ -9,16 +9,18 @@ import {
 } from '@expo-google-fonts/inter';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import 'react-native-reanimated';
 
 import { ErrorBoundary } from '@/components/app/ErrorBoundary';
+import { MandatoryUpdateModal } from '@/components/app/MandatoryUpdateModal';
 import { attendanceService } from '@/services/attendanceService';
 import { authService } from '@/services/authService';
 import { cloudService } from '@/services/cloudService';
 import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
+import { AppUpdateStatus, updateService } from '@/services/updateService';
 import * as Updates from 'expo-updates';
 
 // Prevent splash screen auto-hide until ready
@@ -33,6 +35,9 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
+  const [updateStatus, setUpdateStatus] = useState<AppUpdateStatus | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
@@ -40,23 +45,22 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    // Check for Over-The-Air (OTA) updates on launch and reload immediately if a new bundle is published
-    async function checkOtaUpdates() {
-      if (__DEV__ || !Updates.isEnabled) return;
+    // Check for mandatory updates (OTA bundle or APK)
+    async function checkAppUpdates() {
       try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          const fetchResult = await Updates.fetchUpdateAsync();
-          if (fetchResult.isNew) {
-            await Updates.reloadAsync();
-          }
+        const result = await updateService.checkForUpdate();
+        if (result.isAvailable) {
+          setUpdateStatus(result);
+          setShowUpdateModal(true);
         }
-      } catch {
-        // Fail quietly if offline or network unavailable
+      } catch (err) {
+        console.warn('App update check error:', err);
       }
     }
 
-    checkOtaUpdates();
+    checkAppUpdates();
+    const interval = setInterval(checkAppUpdates, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -162,6 +166,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="+not-found" />
       </Stack>
+      <MandatoryUpdateModal visible={showUpdateModal} updateStatus={updateStatus} />
     </ErrorBoundary>
   );
 }

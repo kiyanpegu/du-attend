@@ -5,7 +5,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { APP_COLORS, APP_IDENTITY, TOKENS, TYPOGRAPHY } from '@/constants/duAttend';
 import { authService } from '@/services/authService';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function FacultyLogin() {
@@ -14,7 +14,16 @@ export default function FacultyLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  useEffect(() => {
+    authService.getRememberedCredential().then((cred) => {
+      if (cred && cred.role === 'faculty' && cred.username) {
+        setFacultyId(cred.username);
+        setRememberMe(cred.enabled);
+      }
+    });
+  }, []);
 
   const handleLogin = async () => {
     if (!facultyId.trim()) {
@@ -29,7 +38,7 @@ export default function FacultyLogin() {
 
     setLoading(true);
     try {
-      const result = await authService.login('faculty', facultyId.trim(), password);
+      const result = await authService.login('faculty', facultyId.trim(), password, rememberMe);
 
       if (result.ok) {
         router.replace('/faculty-dashboard' as never);
