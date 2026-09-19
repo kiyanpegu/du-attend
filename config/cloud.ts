@@ -18,19 +18,46 @@ export function isCloudConfigured(): boolean {
   return CLOUD_CONFIG.isConfigured;
 }
 
-// Custom storage adapter for Supabase auth in React Native / Expo
+// Custom storage adapter for Supabase auth in React Native / Expo (SSR-safe)
 const CustomAsyncStorage = {
-  getItem: (key: string) => AsyncStorage.getItem(key),
-  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-  removeItem: (key: string) => AsyncStorage.removeItem(key),
+  getItem: async (key: string): Promise<string | null> => {
+    if (typeof window === 'undefined' && typeof globalThis !== 'undefined' && !('window' in globalThis)) {
+      return null;
+    }
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (typeof window === 'undefined' && typeof globalThis !== 'undefined' && !('window' in globalThis)) {
+      return;
+    }
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      // Ignore storage errors on server/restricted envs
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (typeof window === 'undefined' && typeof globalThis !== 'undefined' && !('window' in globalThis)) {
+      return;
+    }
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors
+    }
+  },
 };
 
 export const supabase: SupabaseClient | null = CLOUD_CONFIG.isConfigured
   ? createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, {
       auth: {
         storage: CustomAsyncStorage,
-        autoRefreshToken: true,
-        persistSession: true,
+        autoRefreshToken: typeof window !== 'undefined',
+        persistSession: typeof window !== 'undefined',
         detectSessionInUrl: false,
       },
     })
