@@ -1,4 +1,3 @@
-import { AppButton } from '@/components/app/AppButton';
 import { AppScreen } from '@/components/app/AppScreen';
 import { Card } from '@/components/app/Card';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -10,13 +9,13 @@ import { AppNotification, AppNotificationType, notificationService } from '@/ser
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 type FilterType = 'all' | 'live' | 'schedule' | 'alerts';

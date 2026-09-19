@@ -21,7 +21,6 @@ import { cloudService } from '@/services/cloudService';
 import { notificationService } from '@/services/notificationService';
 import { storageService } from '@/services/storageService';
 import { AppUpdateStatus, updateService } from '@/services/updateService';
-import * as Updates from 'expo-updates';
 
 // Prevent splash screen auto-hide until ready
 SplashScreen.preventAutoHideAsync().catch(() => {});

@@ -5,11 +5,11 @@ import { APP_COLORS, APP_IDENTITY, TOKENS } from '@/constants/duAttend';
 import { AppUpdateStatus, updateService } from '@/services/updateService';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Modal,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 
 interface MandatoryUpdateModalProps {
@@ -288,3 +288,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
 });
+

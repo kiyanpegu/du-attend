@@ -57,7 +57,9 @@ export const facultyService = {
 
     const assignedSubjects = await this.getAssignedSubjects(userId);
     const activeSession = await attendanceService.getActiveSessionForFaculty(userId);
-    const recentSessions = (await attendanceService.getFacultySessionReports(userId)).slice(0, 5);
+    const allReports = await attendanceService.getFacultySessionReports(userId);
+    const recentSessions = allReports.slice(0, 5);
+    const totalConducted = allReports.filter((r) => r.session.status === 'ended').length;
 
     return {
       user: profile.user,
@@ -65,6 +67,7 @@ export const facultyService = {
       assignedSubjects,
       activeSession,
       recentSessions,
+      totalConducted,
     };
   },
 };

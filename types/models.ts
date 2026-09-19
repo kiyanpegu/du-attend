@@ -173,6 +173,7 @@ export interface FacultyDashboardData {
   assignedSubjects: Subject[];
   activeSession: AttendanceSession | null;
   recentSessions: FacultySessionReport[];
+  totalConducted?: number;
 }
 
 export interface SessionStudentStatus {
