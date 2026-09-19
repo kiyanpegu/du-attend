@@ -239,15 +239,19 @@ export default function FacultyDashboard() {
       <View style={styles.metricsBar}>
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>{activeSession ? '1 Live' : 'Idle'}</Text>
+          <Text style={styles.metricLabel}>Active Class</Text>
           <Text style={styles.metricLabel} numberOfLines={1}>Active Class</Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>{assignedSubjects.length}</Text>
+          <Text style={styles.metricLabel}>Assigned Courses</Text>
           <Text style={styles.metricLabel} numberOfLines={1}>Courses</Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
+          <Text style={styles.metricValue}>{recentSessions.length}</Text>
+          <Text style={styles.metricLabel}>Conducted Classes</Text>
           <Text style={styles.metricValue}>{data.totalConducted ?? recentSessions.length}</Text>
           <Text style={styles.metricLabel} numberOfLines={1}>Conducted</Text>
         </View>
@@ -653,6 +657,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: APP_COLORS.surface,
     borderRadius: TOKENS.rounded.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginBottom: TOKENS.spacing.xl,
@@ -679,6 +685,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
+    fontWeight: '500',
     fontWeight: '600',
     color: APP_COLORS.textSecondary,
     textAlign: 'center',
